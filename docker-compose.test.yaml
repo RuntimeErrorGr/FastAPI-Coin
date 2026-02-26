@@ -1,0 +1,9 @@
+  services:
+    tests:
+      build:
+        context: .
+        target: test
+      image: coinapi/tests
+      env_file: .env
+      environment:
+        - ENV=test

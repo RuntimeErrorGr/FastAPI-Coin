@@ -1,0 +1,24 @@
+# Git
+.git/
+.gitignore
+
+# Virtual environments
+.env
+.env/
+.venv/
+
+# Python cache files
+__pycache__/
+tests/__pycache__/
+.ruff_cache/
+.pytest_cache/
+
+# Logs
+logs/
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+nosetests.xml

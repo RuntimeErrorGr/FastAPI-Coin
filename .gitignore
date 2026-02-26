@@ -1,0 +1,19 @@
+# Virtual envs
+.env
+.venv
+
+# Python cache files
+.ruff_cache/
+.pytest_cache/
+tests/__pycache__/
+__pycache__/
+
+# Logs
+logs/
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+nosetests.xml
