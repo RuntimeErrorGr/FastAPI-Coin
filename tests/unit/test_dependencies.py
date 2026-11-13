@@ -81,8 +81,8 @@ async def test_rate_is_blocked_when_cache_is_down_and_coin_was_fetched_recently(
 
     with pytest.raises(RateLimitException) as exc_info:
         await get_exchange_rate(
-        query=QUERY, api=coingecko, cache=cache, failover=failover
-    )
+            query=QUERY, api=coingecko, cache=cache, failover=failover
+        )
 
     assert exc_info.value.retry_after > 0
     coingecko.get_rate.assert_not_awaited()

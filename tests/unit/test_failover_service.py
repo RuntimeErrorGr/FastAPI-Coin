@@ -35,7 +35,13 @@ def test_coin_is_blocked_until_timeout_expires(failover, clock, elapsed, blocked
 
 @pytest.mark.parametrize(
     "elapsed, expected",
-    [(0, TIMEOUT), (5, TIMEOUT - 5), (TIMEOUT - 0.5, 1), (TIMEOUT, 0), (TIMEOUT + 60, 0)],
+    [
+        (0, TIMEOUT),
+        (5, TIMEOUT - 5),
+        (TIMEOUT - 0.5, 1),
+        (TIMEOUT, 0),
+        (TIMEOUT + 60, 0),
+    ],
 )
 def test_retry_after_counts_down_to_zero(failover, clock, elapsed, expected):
     clock.return_value = NOW

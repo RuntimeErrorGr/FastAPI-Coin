@@ -24,14 +24,19 @@ def _is_retryable(exc: BaseException) -> bool:
     return False
 
 
+def create_http_client() -> httpx.AsyncClient:
+    """Creates the HTTP connection pool for CoinGecko. Called once, on app startup."""
+    return httpx.AsyncClient(
+        base_url=settings.EXTERNAL_API_URL,
+        timeout=settings.EXTERNAL_API_TIMEOUT,
+    )
+
+
 class CoinGeckoService:
     """Service to interact with the CoinGecko API."""
 
-    def __init__(self):
-        self.client = httpx.AsyncClient(
-            base_url=settings.EXTERNAL_API_URL,
-            timeout=settings.EXTERNAL_API_TIMEOUT,
-        )
+    def __init__(self, client: httpx.AsyncClient):
+        self.client = client
 
     @retry(
         stop=stop_after_attempt(2),

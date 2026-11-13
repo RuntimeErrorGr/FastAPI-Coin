@@ -8,19 +8,24 @@ from app.schemas.coin import CoinRead
 logger = get_logger(__name__)
 
 
+def create_redis_client() -> redis.Redis:
+    """Creates the Redis connection pool. Called once, on app startup."""
+    return redis.Redis(
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        db=settings.REDIS_DB,
+        password=settings.REDIS_PASSWORD,
+        decode_responses=True,
+        socket_connect_timeout=1,
+        socket_timeout=1,
+    )
+
+
 class CacheService:
     """Service to interact with the Redis cache."""
 
-    def __init__(self):
-        self.client = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            db=settings.REDIS_DB,
-            password=settings.REDIS_PASSWORD,
-            decode_responses=True,
-            socket_connect_timeout=1,
-            socket_timeout=1,
-        )
+    def __init__(self, client: redis.Redis):
+        self.client = client
         self._is_up = True
 
     @property

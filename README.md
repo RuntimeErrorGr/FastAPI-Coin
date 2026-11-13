@@ -130,3 +130,10 @@ Because avoiding spam to the external API is mentioned as a critical requirement
 
     - The server refuses to make the request.
     The replica will only be able to make the request to the external API after the 2-minute timeout expires (similar to what happens when the Redis cache is up and running).
+
+#### Known trade-off: right after the cache recovers
+The failover only applies while Redis is unreachable. When Redis is up, the cache itself limits the calls to the external API.
+
+A rate fetched while Redis was down could not be stored in the cache. So if Redis comes back within those 2 minutes, the next request for that coin is a cache miss and calls the external API again. This costs **at most one extra call per coin**, after which the rate is cached and everything is back to normal.
+
+This is intentional. Checking the failover on every cache miss would make the 2-minute rule strict, but users would get `503 Service Unavailable` for up to 2 minutes even though Redis and the external API are both healthy.

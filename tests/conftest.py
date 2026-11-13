@@ -15,7 +15,7 @@ def failover():
 
 @pytest.fixture
 def cache():
-    """Stand-in for CacheService that is up and empty."""
+    """Mock for CacheService that is up and empty."""
     mock = MagicMock(spec=CacheService)
     mock.is_up = True
     mock.get_rate.return_value = None
@@ -24,5 +24,5 @@ def cache():
 
 @pytest.fixture
 def coingecko():
-    """Stand-in for CoinGeckoService. Tests set `get_rate.return_value`."""
+    """Mock for CoinGeckoService. Tests set `get_rate.return_value`."""
     return MagicMock(spec=CoinGeckoService)

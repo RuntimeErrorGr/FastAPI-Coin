@@ -17,9 +17,7 @@ def redis_client():
 @pytest.fixture
 def cache_service(redis_client):
     """Real CacheService talking to a fake Redis client."""
-    service = CacheService()
-    service.client = redis_client
-    return service
+    return CacheService(redis_client)
 
 
 @pytest.fixture
@@ -30,8 +28,7 @@ def http_client():
 @pytest.fixture
 def coingecko_service(http_client):
     """Real CoinGeckoService talking to a fake HTTP client, with no wait between retries."""
-    service = CoinGeckoService()
-    service.client = http_client
+    service = CoinGeckoService(http_client)
     service._fetch_rate.retry.wait = wait_none()
     return service
 

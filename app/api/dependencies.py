@@ -1,6 +1,4 @@
-from functools import lru_cache
-
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db_session
@@ -19,19 +17,16 @@ from app.services.failover_service import FailoverService
 logger = get_logger(__name__)
 
 
-@lru_cache
-def get_failover_service():
-    return FailoverService()
+def get_failover_service(request: Request) -> FailoverService:
+    return request.app.state.failover
 
 
-@lru_cache
-def get_coingecko_service():
-    return CoinGeckoService()
+def get_coingecko_service(request: Request) -> CoinGeckoService:
+    return CoinGeckoService(request.app.state.http_client)
 
 
-@lru_cache
-def get_cache_service():
-    return CacheService()
+def get_cache_service(request: Request) -> CacheService:
+    return CacheService(request.app.state.redis_client)
 
 
 def get_coin_repository(session: AsyncSession = Depends(get_db_session)):

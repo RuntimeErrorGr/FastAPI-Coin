@@ -11,7 +11,7 @@ from app.api.dependencies import (
     get_failover_service,
 )
 from app.config import settings
-from app.db.session import SessionLocal, get_db_session
+from app.db.session import create_session_factory, get_db_session
 from app.main import app
 
 
@@ -34,7 +34,7 @@ async def db_session():
     engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
     async with engine.connect() as connection:
         transaction = await connection.begin()
-        async with SessionLocal(bind=connection) as session:
+        async with create_session_factory(connection)() as session:
             yield session
         await transaction.rollback()
     await engine.dispose()

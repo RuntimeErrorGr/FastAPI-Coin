@@ -11,9 +11,9 @@ class FailoverService:
     Used to prevent API spamming when cache is down.
     """
 
-    def __init__(self):
+    def __init__(self, timeout: int = settings.REDIS_CACHE_EXPIRE):
         self._last_api_call: dict[str, float] = {}
-        self._timeout = settings.REDIS_CACHE_EXPIRE
+        self._timeout = timeout
 
     def retry_after(self, coin: CoinRead) -> int:
         """Seconds until the API may be called again for the coin (0 = now)."""
