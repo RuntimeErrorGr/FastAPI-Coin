@@ -1,6 +1,7 @@
 from enum import Enum
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import URL
 
 
 class EnvType(str, Enum):
@@ -34,8 +35,26 @@ class Settings(BaseSettings):
     REDIS_CACHE_EXPIRE: int = 120
     REDIS_PASSWORD: str
 
+    POSTGRES_HOST: str
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
+
     EXTERNAL_API_URL: str = "https://api.coingecko.com/api/v3/simple/price"
     EXTERNAL_API_TIMEOUT: int = 5
+
+    @property
+    def DATABASE_URL(self) -> URL:
+        """SQLAlchemy URL for the async Postgres driver, built from POSTGRES_*."""
+        return URL.create(
+            drivername="postgresql+asyncpg",
+            username=self.POSTGRES_USER,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_HOST,
+            port=self.POSTGRES_PORT,
+            database=self.POSTGRES_DB,
+        )
 
 
 settings = Settings()

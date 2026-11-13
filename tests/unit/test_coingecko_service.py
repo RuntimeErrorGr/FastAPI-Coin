@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from app.exceptions import ExternalAPIException
-from app.schemas.coin import CoinType
+from tests.coins import BTC
 
 
 class TestCoinGeckoService:
@@ -15,7 +15,7 @@ class TestCoinGeckoService:
 
         mock_http_get.return_value = response
 
-        rate = await coingecko_service.get_rate(CoinType.BTC)
+        rate = await coingecko_service.get_rate(BTC)
 
         assert rate == 123.45
 
@@ -27,7 +27,7 @@ class TestCoinGeckoService:
         mock_http_get.return_value = response
 
         with pytest.raises(ExternalAPIException) as exc:
-            await coingecko_service.get_rate(CoinType.BTC)
+            await coingecko_service.get_rate(BTC)
 
         assert "Rate not found for coin" in str(exc.value)
         assert mock_http_get.await_count == 1
@@ -49,7 +49,7 @@ class TestCoinGeckoService:
         mock_http_get.return_value = httpx.Response(status_code, request=request)
 
         with pytest.raises(ExternalAPIException) as exc:
-            await coingecko_service.get_rate(CoinType.BTC)
+            await coingecko_service.get_rate(BTC)
 
         assert "Failed to fetch data from CoinGecko API" in str(exc.value)
         assert mock_http_get.await_count == expected_attempts
@@ -61,7 +61,7 @@ class TestCoinGeckoService:
         mock_http_get.side_effect = httpx.ConnectTimeout("timeout")
 
         with pytest.raises(ExternalAPIException):
-            await coingecko_service.get_rate(CoinType.BTC)
+            await coingecko_service.get_rate(BTC)
 
         assert mock_http_get.await_count == 2
 
@@ -73,8 +73,8 @@ class TestCoinGeckoService:
         ok.json.return_value = {"bitcoin": {"usd": 100.0}}
         mock_http_get.side_effect = [httpx.ConnectError("down"), ok]
 
-        rate = await coingecko_service.get_rate(CoinType.BTC)
+        rate = await coingecko_service.get_rate(BTC)
 
         assert rate == 100.0
         assert mock_http_get.await_count == 2
-        coingecko_service.failover.record_call.assert_called_once_with(CoinType.BTC)
+        coingecko_service.failover.record_call.assert_called_once_with(BTC)

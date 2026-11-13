@@ -1,3 +1,9 @@
+x-app-build: &app-build
+  context: .
+  target: dev
+  args:
+    APP_UID: ${APP_UID:-1000}
+
 services:
   nginx:
     image: nginx:alpine
@@ -9,11 +15,7 @@ services:
       - coinapi
 
   coinapi:
-    build:
-      context: .
-      target: dev
-      args:
-        APP_UID: ${APP_UID:-1000}
+    build: *app-build
     image: coinapi/api
     deploy:
       replicas: 1
@@ -22,7 +24,23 @@ services:
       - ./app:/app/app
       - ./logs:/app/logs
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    build: *app-build
+    image: coinapi/api
+    entrypoint: ["alembic"]
+    command: ["upgrade", "head"]
+    env_file: .env
+    volumes:
+      - ./app:/app/app
+      - ./migrations:/app/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   redis:
     image: redis:alpine
@@ -32,5 +50,19 @@ services:
     expose:
       - "6379"
 
+  postgres:
+    image: postgres:17-alpine
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    expose:
+      - "5432"
+
 volumes:
   redis_data:
+  pg_data:

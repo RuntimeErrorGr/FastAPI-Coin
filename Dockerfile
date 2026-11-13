@@ -19,6 +19,8 @@ FROM base AS test
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --extra dev
 
+COPY --chown=app:app alembic.ini ./
+COPY --chown=app:app ./migrations ./migrations
 COPY --chown=app:app ./app ./app
 COPY --chown=app:app ./tests ./tests
 
@@ -31,6 +33,8 @@ FROM base AS dev
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project
 
+COPY --chown=app:app alembic.ini ./
+COPY --chown=app:app ./migrations ./migrations
 COPY --chown=app:app ./app ./app
 
 USER app

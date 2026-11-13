@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from app.schemas.coin import CoinType
+from app.schemas.coin import CoinRead
 
 
 class ExchangeQueryResponse(BaseModel):
@@ -12,5 +12,5 @@ class ExchangeQueryResponse(BaseModel):
 class ExchangeQueryParams(BaseModel):
     """Internal model to hold validated query parameters."""
 
-    coin: CoinType
+    coin: CoinRead
     amount: float

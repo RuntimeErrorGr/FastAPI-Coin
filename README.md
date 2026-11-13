@@ -9,16 +9,15 @@ The application consists of the following components:
 * **FastAPI Webserver**: The core backend API.
 * **Nginx Reverse Proxy**: Handles incoming traffic and load balancing.
 * **Redis**: Used for data caching.
+* **PostgreSQL**: The database, accessed through async SQLAlchemy. Its schema is managed by Alembic migrations.
 
 ## Prerequisites
 Before running the project, ensure you have the following installed:
 * **Docker** (Tested on version `28.2.2`, build `e6534b4`)
 * **Docker Compose** (Tested on version `v5.0.0-desktop.1`)
 * **Make** (Tested on version `4.4.1`)
-  
-For local testing (optional):
-* **Python** (Tested on version `3.13.3`)
-* **uv** (Tested on version `0.9.26`)
+
+Everything else (Python, uv, PostgreSQL, Redis) runs inside Docker.
 
 ## How to use
 
@@ -55,21 +54,66 @@ For more options run simple `make`.
 The web server can be scaled to multiple replicas using docker-compose.yaml.
 All replicas will be served behind the Nginx.
 
+## Database
+
+The database is the source of truth for the supported coins (the `coins` table).
+`make dev-run` starts PostgreSQL and then a one-off `migrate` container that runs
+`alembic upgrade head` **before** the API starts, so the schema is always up to date.
+
+| Command | What it does |
+|---|---|
+| `make db-upgrade` | Apply all pending migrations |
+| `make db-downgrade` | Revert the latest migration |
+| `make db-revision m="..." id=...` | Create a new, empty migration file in `migrations/versions/` |
+| `make db-shell` | Open `psql` on the dev database |
+
+### How to add a supported coin
+Coins are data, so adding one is a **data migration**:
+
+1. Create the migration file:
+    ```bash
+    make db-revision m="add doge" id=0003
+    ```
+2. Fill in `migrations/versions/0003_add_doge.py`:
+    ```python
+    coins = sa.table(
+        "coins",
+        sa.column("symbol", sa.String),
+        sa.column("coingecko_id", sa.String),
+        sa.column("name", sa.String),
+    )
+
+
+    def upgrade() -> None:
+        op.bulk_insert(
+            coins, [{"symbol": "doge", "coingecko_id": "dogecoin", "name": "Dogecoin"}]
+        )
+
+
+    def downgrade() -> None:
+        op.execute(coins.delete().where(coins.c.symbol == "doge"))
+    ```
+3. Apply it:
+    ```bash
+    make db-upgrade
+    ```
+
+`/exchange?coin=doge` works right away, with no code change and no restart.
+
 ## Extra
 
 ### Tests
-In addition to the core requirements, the project includes unit and integration tests.
-The test suite is flexible and can be executed in 2 ways:
+The project includes three layers of tests, all run inside Docker:
 
-**Dockerized Environment**:
 ```bash
 make test-run
 ```
 
-**Local virtual Environment**:
-```bash
-make local-test
-```
+* **Unit** (`tests/unit`): services and dependencies in isolation, with Redis, HTTP and the database mocked.
+* **API** (`tests/api`): HTTP requests through FastAPI, with every dependency replaced by a fake.
+* **Integration** (`tests/integration`): runs against a throwaway PostgreSQL container. It applies the real migrations,
+  then runs each test inside a transaction that is rolled back afterwards.
+
 ### Logging
 Each server replica has its own log file. For convenience, the log folder from the container is mounted to the host's `/log` folder so you can easily inspect logs while the app is running.
 

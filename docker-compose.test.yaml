@@ -1,11 +1,27 @@
-  services:
-    tests:
-      build:
-        context: .
-        target: test
-        args:
-          APP_UID: ${APP_UID:-1000}
-      image: coinapi/tests
-      env_file: .env
-      environment:
-        - ENV=test
+name: fastapi-coin-test
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    env_file: .env
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  tests:
+    build:
+      context: .
+      target: test
+      args:
+        APP_UID: ${APP_UID:-1000}
+    image: coinapi/tests
+    env_file: .env
+    environment:
+      - ENV=test
+    depends_on:
+      postgres:
+        condition: service_healthy

@@ -1,19 +1,11 @@
-from enum import Enum
+from pydantic import BaseModel, ConfigDict
 
 
-class CoinType(str, Enum):
-    """Supported coin types."""
+class CoinRead(BaseModel):
+    """A supported coin, as used by the services and returned by the API."""
 
-    BTC = "btc"
-    ETH = "eth"
-    XRP = "xrp"
+    model_config = ConfigDict(frozen=True, from_attributes=True)
 
-    @property
-    def coingecko_id(self) -> str:
-        """Returns the CoinGecko ID for the specific coin type."""
-        mapping = {
-            self.BTC: "bitcoin",
-            self.ETH: "ethereum",
-            self.XRP: "ripple",
-        }
-        return mapping[self]
+    symbol: str
+    coingecko_id: str
+    name: str

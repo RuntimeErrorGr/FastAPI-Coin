@@ -9,7 +9,10 @@ dependencies = [
     "redis",
     "httpx",
     "pydantic-settings",
-    "tenacity"
+    "tenacity",
+    "sqlalchemy[asyncio]",
+    "asyncpg",
+    "alembic"
 ]
 
 [project.optional-dependencies]
@@ -33,6 +36,9 @@ extend-exclude = ["__init__.py"]
 select = ["E", "F", "I", "B", "UP", "D"]
 ignore = ["E501", "B008", "D103", "D104", "D107", "D100", "D417"]
 
+[tool.ruff.lint.per-file-ignores]
+"migrations/versions/*" = ["D"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
@@ -51,3 +57,4 @@ pythonpath = ["."]
 [tool.coverage.run]
 source = ["app"]
 omit = ["app/server.py"]
+concurrency = ["greenlet", "thread"]

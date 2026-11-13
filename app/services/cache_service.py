@@ -3,7 +3,7 @@ import redis.asyncio as redis
 from app.config import settings
 from app.exceptions import CacheConnectionException, CacheMissException
 from app.log import get_logger
-from app.schemas.coin import CoinType
+from app.schemas.coin import CoinRead
 
 logger = get_logger(__name__)
 
@@ -37,31 +37,31 @@ class CacheService:
             self._is_up = False
             raise CacheConnectionException("Failed to connect to Redis cache.") from e
 
-    async def _get_rate(self, coin: CoinType) -> float:
-        rate = await self._exec(self.client.get, f"rate:{coin.value}")
+    async def _get_rate(self, coin: CoinRead) -> float:
+        rate = await self._exec(self.client.get, f"rate:{coin.symbol}")
         if rate is not None:
-            logger.debug(f"Cache hit for {coin.value}: {rate}")
+            logger.debug(f"Cache hit for {coin.symbol}: {rate}")
             return float(rate)
 
-        raise CacheMissException(f"Coin not found in the cache: {coin.value}")
+        raise CacheMissException(f"Coin not found in the cache: {coin.symbol}")
 
-    async def _set_rate(self, coin: CoinType, rate: float) -> None:
+    async def _set_rate(self, coin: CoinRead, rate: float) -> None:
         await self._exec(
             self.client.setex,
-            f"rate:{coin.value}",
+            f"rate:{coin.symbol}",
             settings.REDIS_CACHE_EXPIRE,
             str(rate),
         )
-        logger.debug(f"Cache updated for {coin.value}: {rate}")
+        logger.debug(f"Cache updated for {coin.symbol}: {rate}")
 
-    async def set_rate(self, coin: CoinType, rate: float) -> None:
+    async def set_rate(self, coin: CoinRead, rate: float) -> None:
         """Attempts to update the exchange rate in the cache."""
         try:
             await self._set_rate(coin, rate)
         except CacheConnectionException as e:
-            logger.error(f"Error updating cache for coin: {coin.value}: {e}")
+            logger.error(f"Error updating cache for coin: {coin.symbol}: {e}")
 
-    async def get_rate(self, coin: CoinType) -> float | None:
+    async def get_rate(self, coin: CoinRead) -> float | None:
         """Attempts to get the exchange rate from the cache."""
         try:
             rate = await self._get_rate(coin)

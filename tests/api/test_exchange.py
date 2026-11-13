@@ -1,7 +1,7 @@
 import pytest
 
 from app.exceptions import ExternalAPIException
-from app.schemas.coin import CoinType
+from tests.coins import ETH
 
 
 class TestExchange:
@@ -93,8 +93,8 @@ class TestExchange:
 
         assert response.status_code == 200
         assert response.json().get("usd_amount") == 3000
-        mock_failover.should_block_request.assert_called_once_with(CoinType.ETH)
-        mock_coingecko_api.get_rate.assert_awaited_once_with(CoinType.ETH)
+        mock_failover.should_block_request.assert_called_once_with(ETH)
+        mock_coingecko_api.get_rate.assert_awaited_once_with(ETH)
 
     def test_exchange_cache_down_blocks_request(
         self,
@@ -113,7 +113,7 @@ class TestExchange:
         assert response.status_code == 503
         assert response.headers["Retry-After"] == "42"
         assert "temporarily unavailable" in response.json().get("error", "")
-        mock_failover.should_block_request.assert_called_once_with(CoinType.ETH)
+        mock_failover.should_block_request.assert_called_once_with(ETH)
         mock_coingecko_api.get_rate.assert_not_awaited()
 
     def test_exchange_cache_up_skips_failover(
@@ -130,7 +130,7 @@ class TestExchange:
 
         assert response.status_code == 200
         mock_failover.should_block_request.assert_not_called()
-        mock_cache.set_rate.assert_awaited_once_with(CoinType.ETH, 3000)
+        mock_cache.set_rate.assert_awaited_once_with(ETH, 3000)
 
     def test_exchange_api_error(
         self,

@@ -9,7 +9,7 @@ from tenacity import (
 from app.config import settings
 from app.exceptions import ExternalAPIException
 from app.log import get_logger
-from app.schemas.coin import CoinType
+from app.schemas.coin import CoinRead
 from app.services.failover_service import FailoverService
 
 logger = get_logger(__name__)
@@ -41,7 +41,7 @@ class CoinGeckoService:
         retry=retry_if_exception(_is_retryable),
         reraise=True,
     )
-    async def _fetch_rate(self, coin: CoinType) -> float:
+    async def _fetch_rate(self, coin: CoinRead) -> float:
         response = await self.client.get(
             "",
             params={
@@ -55,11 +55,11 @@ class CoinGeckoService:
 
         rate = data.get(coin.coingecko_id, {}).get("usd")
         if not rate:
-            raise ExternalAPIException(f"Rate not found for coin: {coin.value}")
+            raise ExternalAPIException(f"Rate not found for coin: {coin.symbol}")
 
         return float(rate)
 
-    async def get_rate(self, coin: CoinType) -> float:
+    async def get_rate(self, coin: CoinRead) -> float:
         """Attempts to get the exchange rate from CoinGecko API."""
         try:
             rate = await self._fetch_rate(coin)

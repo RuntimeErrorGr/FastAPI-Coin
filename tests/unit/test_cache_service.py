@@ -2,7 +2,7 @@ import pytest
 import redis.asyncio as redis
 
 from app.config import settings
-from app.schemas.coin import CoinType
+from tests.coins import BTC, ETH
 
 
 class TestCacheService:
@@ -20,16 +20,16 @@ class TestCacheService:
     ):
         mock_redis_client.get.return_value = redis_value
 
-        rate = await cache_service.get_rate(CoinType.BTC)
+        rate = await cache_service.get_rate(BTC)
         assert rate == expected
         mock_redis_client.get.assert_awaited_once_with("rate:btc")
 
     @pytest.mark.parametrize(
         "coin, value, side_effect",
         [
-            (CoinType.ETH, 987.65, None),
+            (ETH, 987.65, None),
             # BUG: redis timeout
-            (CoinType.BTC, 123.45, redis.TimeoutError()),
+            (BTC, 123.45, redis.TimeoutError()),
         ],
     )
     async def test_set_rate(
@@ -44,7 +44,7 @@ class TestCacheService:
 
         await cache_service.set_rate(coin, value)
         mock_redis_client.setex.assert_awaited_once_with(
-            f"rate:{coin.value.lower()}",
+            f"rate:{coin.symbol}",
             settings.REDIS_CACHE_EXPIRE,
             str(value),
         )
@@ -56,5 +56,5 @@ class TestCacheService:
     ):
         mock_redis_client.get.side_effect = redis.ConnectionError()
 
-        rate = await cache_service.get_rate(CoinType.BTC)
+        rate = await cache_service.get_rate(BTC)
         assert rate is None

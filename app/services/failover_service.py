@@ -2,7 +2,7 @@ import math
 import time
 
 from app.config import settings
-from app.schemas.coin import CoinType
+from app.schemas.coin import CoinRead
 
 
 class FailoverService:
@@ -15,19 +15,19 @@ class FailoverService:
         self._last_api_call: dict[str, float] = {}
         self._timeout = settings.REDIS_CACHE_EXPIRE
 
-    def retry_after(self, coin: CoinType) -> int:
+    def retry_after(self, coin: CoinRead) -> int:
         """Seconds until the API may be called again for the coin (0 = now)."""
-        last_time = self._last_api_call.get(coin.value)
+        last_time = self._last_api_call.get(coin.symbol)
         if not last_time:
             return 0
 
         remaining = self._timeout - (time.time() - last_time)
         return max(0, math.ceil(remaining))
 
-    def should_block_request(self, coin: CoinType) -> bool:
+    def should_block_request(self, coin: CoinRead) -> bool:
         """Checks if the API was called recently for the given coin."""
         return self.retry_after(coin) > 0
 
-    def record_call(self, coin: CoinType) -> None:
+    def record_call(self, coin: CoinRead) -> None:
         """Records the time of the last API call for the given coin."""
-        self._last_api_call[coin.value] = time.time()
+        self._last_api_call[coin.symbol] = time.time()

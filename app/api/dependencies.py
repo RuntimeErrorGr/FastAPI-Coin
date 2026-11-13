@@ -1,14 +1,16 @@
 from functools import lru_cache
 
 from fastapi import Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import get_db_session
 from app.exceptions import (
     InvalidCoinException,
     OutOfBoundsAmountException,
     RateLimitException,
 )
 from app.log import get_logger
-from app.schemas.coin import CoinType
+from app.repositories.coin_repository import CoinRepository
 from app.schemas.exchange import ExchangeQueryParams
 from app.services.cache_service import CacheService
 from app.services.coingecko_service import CoinGeckoService
@@ -32,19 +34,23 @@ def get_cache_service():
     return CacheService()
 
 
+def get_coin_repository(session: AsyncSession = Depends(get_db_session)):
+    return CoinRepository(session)
+
+
 async def validate_exchange_params(
     coin: str = Query(..., description="The coin to exchange into USD."),
     amount: float = Query(..., description="The quantity to exchange."),
+    supported_coins: CoinRepository = Depends(get_coin_repository),
 ) -> ExchangeQueryParams:
-    try:
-        coin_enum = CoinType(coin.lower())
-    except (ValueError, AttributeError) as err:
-        raise InvalidCoinException(coin=coin) from err
+    supported_coin = await supported_coins.get_by_symbol(coin.lower())
+    if supported_coin is None:
+        raise InvalidCoinException(coin=coin)
 
     if amount <= 0 or amount >= 10000:
         raise OutOfBoundsAmountException(amount=amount)
 
-    return ExchangeQueryParams(coin=coin_enum, amount=amount)
+    return ExchangeQueryParams(coin=supported_coin, amount=amount)
 
 
 async def get_exchange_rate(

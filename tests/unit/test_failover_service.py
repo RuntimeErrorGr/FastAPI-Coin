@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.schemas.coin import CoinType
+from tests.coins import BTC, ETH
 
 
 class TestFailoverService:
@@ -10,23 +10,23 @@ class TestFailoverService:
         "recorded_coin, check_coin, time_passed, expected_block",
         [
             # No previous call
-            (None, CoinType.BTC, 0, False),
+            (None, BTC, 0, False),
             # Same coin, only 5s passed (blocked)
             (
-                CoinType.BTC,
-                CoinType.BTC,
+                BTC,
+                BTC,
                 5,
                 True,
             ),
             # Same coin, 70s passed (expired/not blocked)
             (
-                CoinType.BTC,
-                CoinType.BTC,
+                BTC,
+                BTC,
                 70,
                 False,
             ),
             # Different coin (not blocked)
-            (CoinType.BTC, CoinType.ETH, 5, False),
+            (BTC, ETH, 5, False),
         ],
     )
     def test_should_block_request(
@@ -58,10 +58,10 @@ class TestFailoverService:
     def test_retry_after(self, failover_service, time_passed, expected):
         with patch("time.time") as mock_time:
             mock_time.return_value = 1000
-            failover_service.record_call(CoinType.BTC)
+            failover_service.record_call(BTC)
 
             mock_time.return_value = 1000 + time_passed
-            assert failover_service.retry_after(CoinType.BTC) == expected
+            assert failover_service.retry_after(BTC) == expected
 
     def test_retry_after_unknown_coin(self, failover_service):
-        assert failover_service.retry_after(CoinType.ETH) == 0
+        assert failover_service.retry_after(ETH) == 0
