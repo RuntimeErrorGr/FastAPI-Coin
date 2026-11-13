@@ -3,6 +3,8 @@
       build:
         context: .
         target: test
+        args:
+          APP_UID: ${APP_UID:-1000}
       image: coinapi/tests
       env_file: .env
       environment:

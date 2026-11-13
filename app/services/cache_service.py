@@ -39,7 +39,7 @@ class CacheService:
 
     async def _get_rate(self, coin: CoinType) -> float:
         rate = await self._exec(self.client.get, f"rate:{coin.value}")
-        if rate:
+        if rate is not None:
             logger.debug(f"Cache hit for {coin.value}: {rate}")
             return float(rate)
 

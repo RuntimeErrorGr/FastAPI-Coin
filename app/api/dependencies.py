@@ -61,12 +61,15 @@ async def get_exchange_rate(
     5. Return the exchange rate.
     """
     rate = await cache.get_rate(query.coin)
-    if rate:
+    if rate is not None:
         return rate
 
     if not cache.is_up:
         if api.failover.should_block_request(query.coin):
-            raise RateLimitException("Failover policy blocks the request.")
+            raise RateLimitException(
+                "Failover policy blocks the request.",
+                retry_after=api.failover.retry_after(query.coin),
+            )
 
         logger.warning("Cache is down, proceeding without cache.")
 

@@ -3,6 +3,7 @@ class ExchangeBaseException(Exception):
 
     def __init__(self, message: str):
         self.message = message
+        super().__init__(message)
 
 
 class InvalidCoinException(ExchangeBaseException):
@@ -47,4 +48,6 @@ class RateLimitException(CacheConnectionException):
     a timeout period to prevent spamming the external API.
     """
 
-    pass
+    def __init__(self, message: str, retry_after: int):
+        self.retry_after = retry_after
+        super().__init__(message)

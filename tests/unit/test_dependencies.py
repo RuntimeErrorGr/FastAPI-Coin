@@ -9,26 +9,30 @@ from app.schemas.coin import CoinType
 
 
 class TestDependencies:
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "coin, amount, should_pass",
+        "coin, amount",
         [
-            ("btc", 1.0, True),
-            ("ETH", 10.5, True),
-            ("Xrp", 9999.0, True),
-            ("doge", 1.0, False),
-            ("btC", 0, False),
-            ("eth", -1, False),
-            ("XRP", 10000, False),
-            (None, None, False),
-            ("", "", False),
+            ("btc", 1.0),
+            ("ETH", 10.5),
+            ("Xrp", 9999.0),
         ],
     )
-    async def test_validate_exchange_params(self, coin, amount, should_pass):
-        if should_pass:
-            result = await validate_exchange_params(coin=coin, amount=amount)
-            assert result.coin == CoinType(coin.lower())
-            assert result.amount == amount
-        else:
-            with pytest.raises((InvalidCoinException, OutOfBoundsAmountException)):
-                await validate_exchange_params(coin=coin, amount=amount)
+    async def test_validate_exchange_params_valid(self, coin, amount):
+        result = await validate_exchange_params(coin=coin, amount=amount)
+        assert result.coin == CoinType(coin.lower())
+        assert result.amount == amount
+
+    @pytest.mark.parametrize(
+        "coin, amount",
+        [
+            ("doge", 1.0),
+            ("btC", 0),
+            ("eth", -1),
+            ("XRP", 10000),
+            (None, None),
+            ("", ""),
+        ],
+    )
+    async def test_validate_exchange_params_invalid(self, coin, amount):
+        with pytest.raises((InvalidCoinException, OutOfBoundsAmountException)):
+            await validate_exchange_params(coin=coin, amount=amount)

@@ -1,13 +1,11 @@
 import pytest
 
-from app.exceptions import (
-    ExternalAPIException,
-    RateLimitException,
-)
+from app.exceptions import ExternalAPIException
+from app.schemas.coin import CoinType
 
 
 class TestExchange:
-    """Integration tests for /exchange endpoint."""
+    """API and endpoint tests for /exchange endpoint."""
 
     @pytest.mark.parametrize(
         "coin, cached_rate, api_rate, amount, expected_usd_amount",
@@ -84,32 +82,55 @@ class TestExchange:
         client,
         mock_cache,
         mock_coingecko_api,
+        mock_failover,
     ):
-        mock_cache._is_up = False
-        mock_coingecko_api.failover.should_block_request.return_value = False
+        mock_cache.is_up = False
+        mock_cache.get_rate.return_value = None
+        mock_failover.should_block_request.return_value = False
         mock_coingecko_api.get_rate.return_value = 3000
 
         response = client.get("/exchange", params={"coin": "eth", "amount": "1"})
 
         assert response.status_code == 200
-        data = response.json()
-        assert data.get("usd_amount") == 3000
+        assert response.json().get("usd_amount") == 3000
+        mock_failover.should_block_request.assert_called_once_with(CoinType.ETH)
+        mock_coingecko_api.get_rate.assert_awaited_once_with(CoinType.ETH)
 
     def test_exchange_cache_down_blocks_request(
         self,
         client,
         mock_cache,
         mock_coingecko_api,
+        mock_failover,
     ):
-        mock_cache._is_up = False
-        mock_cache.get_rate.side_effect = RateLimitException("Cache down")
-        mock_coingecko_api.failover.should_block_request.return_value = True
+        mock_cache.is_up = False
+        mock_cache.get_rate.return_value = None
+        mock_failover.should_block_request.return_value = True
+        mock_failover.retry_after.return_value = 42
 
         response = client.get("/exchange", params={"coin": "eth", "amount": "1"})
 
-        assert response.status_code == 500
-        error = response.json()
-        assert "Rate limit exceeded" in error.get("error", "")
+        assert response.status_code == 503
+        assert response.headers["Retry-After"] == "42"
+        assert "temporarily unavailable" in response.json().get("error", "")
+        mock_failover.should_block_request.assert_called_once_with(CoinType.ETH)
+        mock_coingecko_api.get_rate.assert_not_awaited()
+
+    def test_exchange_cache_up_skips_failover(
+        self,
+        client,
+        mock_cache,
+        mock_coingecko_api,
+        mock_failover,
+    ):
+        mock_cache.get_rate.return_value = None
+        mock_coingecko_api.get_rate.return_value = 3000
+
+        response = client.get("/exchange", params={"coin": "eth", "amount": "1"})
+
+        assert response.status_code == 200
+        mock_failover.should_block_request.assert_not_called()
+        mock_cache.set_rate.assert_awaited_once_with(CoinType.ETH, 3000)
 
     def test_exchange_api_error(
         self,
@@ -118,7 +139,6 @@ class TestExchange:
         mock_coingecko_api,
     ):
         mock_cache.get_rate.return_value = None
-        mock_coingecko_api.failover.should_block_request.return_value = False
         mock_coingecko_api.get_rate.side_effect = ExternalAPIException("API Error")
 
         response = client.get("/exchange", params={"coin": "xrp", "amount": "1"})
@@ -126,3 +146,17 @@ class TestExchange:
         assert response.status_code == 500
         error = response.json()
         assert "Internal server error" in error.get("error", "")
+
+    def test_exchange_zero_cached_rate_is_a_hit(
+        self,
+        client,
+        mock_cache,
+        mock_coingecko_api,
+    ):
+        mock_cache.get_rate.return_value = 0.0
+
+        response = client.get("/exchange", params={"coin": "xrp", "amount": "5"})
+
+        assert response.status_code == 200
+        assert response.json().get("usd_amount") == 0.0
+        mock_coingecko_api.get_rate.assert_not_awaited()

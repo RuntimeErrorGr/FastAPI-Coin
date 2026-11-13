@@ -1,23 +1,32 @@
 import logging
 import socket
+import sys
 from pathlib import Path
 
 from app.config import settings
 
-FILE_FORMAT = "%(asctime)s - [{hostname}] - %(levelname)s - %(message)s"
+LOG_FORMAT = "%(asctime)s - [{hostname}] - %(levelname)s - %(message)s"
 
 
-def _get_handler() -> logging.FileHandler:
-    """Creates a simple file handler."""
+def _get_formatter(hostname: str) -> logging.Formatter:
+    return logging.Formatter(LOG_FORMAT.replace("{hostname}", hostname))
+
+
+def _get_file_handler(hostname: str) -> logging.FileHandler:
+    """Creates a file handler writing to a per-host log file."""
     log_dir = Path(settings.LOG_DIR)
     log_dir.mkdir(parents=True, exist_ok=True)
-    hostname = socket.gethostname()
 
     log_file = log_dir / f"{settings.PROJECT_NAME.lower()}_{hostname}.log"
-    formatter = logging.Formatter(FILE_FORMAT.replace("{hostname}", hostname))
-
     handler = logging.FileHandler(log_file)
-    handler.setFormatter(formatter)
+    handler.setFormatter(_get_formatter(hostname))
+    return handler
+
+
+def _get_stream_handler(hostname: str) -> logging.StreamHandler:
+    """Creates a handler writing to stdout, picked up by `docker logs`."""
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(_get_formatter(hostname))
     return handler
 
 
@@ -29,6 +38,8 @@ def get_logger(name: str, level: int = logging.DEBUG) -> logging.Logger:
     if logger.handlers:
         return logger
 
-    logger.addHandler(_get_handler())
+    hostname = socket.gethostname()
+    logger.addHandler(_get_file_handler(hostname))
+    logger.addHandler(_get_stream_handler(hostname))
     logger.propagate = False
     return logger

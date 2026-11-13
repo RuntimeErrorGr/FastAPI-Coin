@@ -21,10 +21,6 @@ dev = [
     "ruff"
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [tool.uv]
 package = false
 
@@ -53,13 +49,5 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.coverage.run]
-source = ["."]
-omit = [
-    "tests/*",
-    "main.py",
-    "server.py",
-    "config.py",
-    "exceptions.py",
-    "handlers.py",
-    "log.py"
-]
+source = ["app"]
+omit = ["app/server.py"]

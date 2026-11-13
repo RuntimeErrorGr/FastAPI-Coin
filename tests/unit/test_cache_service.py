@@ -6,7 +6,6 @@ from app.schemas.coin import CoinType
 
 
 class TestCacheService:
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "redis_value, expected",
         [
@@ -25,7 +24,6 @@ class TestCacheService:
         assert rate == expected
         mock_redis_client.get.assert_awaited_once_with("rate:btc")
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "coin, value, side_effect",
         [
@@ -53,7 +51,6 @@ class TestCacheService:
 
         mock_redis_client.setex.reset_mock()
 
-    @pytest.mark.asyncio
     async def test_get_rate_redis_connection_error(
         self, cache_service, mock_redis_client
     ):

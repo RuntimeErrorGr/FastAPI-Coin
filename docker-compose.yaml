@@ -12,9 +12,11 @@ services:
     build:
       context: .
       target: dev
+      args:
+        APP_UID: ${APP_UID:-1000}
     image: coinapi/api
     deploy:
-      replicas: 3
+      replicas: 1
     env_file: .env
     volumes:
       - ./app:/app/app

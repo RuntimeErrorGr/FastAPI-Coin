@@ -44,3 +44,24 @@ class TestFailoverService:
 
             result = failover_service.should_block_request(check_coin)
             assert result == expected_block
+
+    @pytest.mark.parametrize(
+        "time_passed, expected",
+        [
+            (0, 60),
+            (5, 55),
+            (59.5, 1),
+            (60, 0),
+            (70, 0),
+        ],
+    )
+    def test_retry_after(self, failover_service, time_passed, expected):
+        with patch("time.time") as mock_time:
+            mock_time.return_value = 1000
+            failover_service.record_call(CoinType.BTC)
+
+            mock_time.return_value = 1000 + time_passed
+            assert failover_service.retry_after(CoinType.BTC) == expected
+
+    def test_retry_after_unknown_coin(self, failover_service):
+        assert failover_service.retry_after(CoinType.ETH) == 0

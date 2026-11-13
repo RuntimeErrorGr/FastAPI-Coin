@@ -47,10 +47,16 @@ async def cache_connection_exception_handler(_: Request, exc: CacheConnectionExc
 
 
 async def failover_blocked_exception_handler(_: Request, exc: RateLimitException):
-    logger.error(f"Failover blocked request: {exc}")
+    """Cache is down and the coin was fetched recently.
+
+    503: the client did nothing wrong, the server is degraded.
+    Retry-After tells the client when the request can succeed.
+    """
+    logger.warning(f"Failover blocked request: {exc}")
     return JSONResponse(
-        status_code=500,
-        content={"error": "Rate limit exceeded."},
+        status_code=503,
+        content={"error": "Service temporarily unavailable. Try again later."},
+        headers={"Retry-After": str(exc.retry_after)},
     )
 
 

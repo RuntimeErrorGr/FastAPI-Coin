@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from tenacity import wait_none
 
 from app.services.cache_service import CacheService
 from app.services.coingecko_service import CoinGeckoService
@@ -41,4 +42,6 @@ def mock_http_get():
 
 @pytest.fixture
 def coingecko_service():
-    return CoinGeckoService(failover=MagicMock())
+    service = CoinGeckoService(failover=MagicMock())
+    service._fetch_rate.retry.wait = wait_none()
+    return service
