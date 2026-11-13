@@ -1,47 +1,44 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from tenacity import wait_none
 
+from app.repositories.coin_repository import CoinRepository
 from app.services.cache_service import CacheService
 from app.services.coingecko_service import CoinGeckoService
-from app.services.failover_service import FailoverService
+from tests.coins import COINS
 
 
 @pytest.fixture
-def failover_service():
-    service = FailoverService()
-    service._timeout = 60
+def redis_client():
+    return AsyncMock()
+
+
+@pytest.fixture
+def cache_service(redis_client):
+    """Real CacheService talking to a fake Redis client."""
+    service = CacheService()
+    service.client = redis_client
     return service
 
 
 @pytest.fixture
-def mock_redis_client():
-    client = MagicMock()
-    client.get = AsyncMock()
-    client.setex = AsyncMock()
-    return client
+def http_client():
+    return AsyncMock()
 
 
 @pytest.fixture
-def cache_service(mock_redis_client):
-    with patch(
-        "app.services.cache_service.redis.Redis", return_value=mock_redis_client
-    ):
-        yield CacheService()
-
-
-@pytest.fixture
-def mock_http_get():
-    with patch(
-        "app.services.coingecko_service.httpx.AsyncClient.get",
-        new_callable=AsyncMock,
-    ) as mock:
-        yield mock
-
-
-@pytest.fixture
-def coingecko_service():
-    service = CoinGeckoService(failover=MagicMock())
+def coingecko_service(http_client):
+    """Real CoinGeckoService talking to a fake HTTP client, with no wait between retries."""
+    service = CoinGeckoService()
+    service.client = http_client
     service._fetch_rate.retry.wait = wait_none()
     return service
+
+
+@pytest.fixture
+def coin_repository():
+    """Stand-in for CoinRepository that knows the coins in tests/coins.py."""
+    mock = MagicMock(spec=CoinRepository)
+    mock.get_by_symbol.side_effect = COINS.get
+    return mock

@@ -1,60 +1,54 @@
-import pytest
 import redis.asyncio as redis
 
 from app.config import settings
 from tests.coins import BTC, ETH
 
 
-class TestCacheService:
-    @pytest.mark.parametrize(
-        "redis_value, expected",
-        [
-            # cache hit
-            ("123.45", 123.45),
-            # cache miss
-            (None, None),
-        ],
+async def test_get_rate_returns_cached_value(cache_service, redis_client):
+    redis_client.get.return_value = "123.45"
+
+    rate = await cache_service.get_rate(BTC)
+
+    assert rate == 123.45
+    redis_client.get.assert_awaited_once_with("rate:btc")
+
+
+async def test_get_rate_returns_none_on_miss(cache_service, redis_client):
+    redis_client.get.return_value = None
+
+    assert await cache_service.get_rate(BTC) is None
+
+
+async def test_get_rate_returns_none_when_redis_is_unreachable(
+    cache_service, redis_client
+):
+    redis_client.get.side_effect = redis.ConnectionError()
+
+    assert await cache_service.get_rate(BTC) is None
+    assert cache_service.is_up is False
+
+
+async def test_set_rate_stores_value_with_expiry(cache_service, redis_client):
+    await cache_service.set_rate(ETH, 987.65)
+
+    redis_client.setex.assert_awaited_once_with(
+        "rate:eth", settings.REDIS_CACHE_EXPIRE, "987.65"
     )
-    async def test_get_rate(
-        self, cache_service, mock_redis_client, redis_value, expected
-    ):
-        mock_redis_client.get.return_value = redis_value
 
-        rate = await cache_service.get_rate(BTC)
-        assert rate == expected
-        mock_redis_client.get.assert_awaited_once_with("rate:btc")
 
-    @pytest.mark.parametrize(
-        "coin, value, side_effect",
-        [
-            (ETH, 987.65, None),
-            # BUG: redis timeout
-            (BTC, 123.45, redis.TimeoutError()),
-        ],
-    )
-    async def test_set_rate(
-        self,
-        cache_service,
-        mock_redis_client,
-        coin,
-        value,
-        side_effect,
-    ):
-        mock_redis_client.setex.side_effect = side_effect
+async def test_set_rate_ignores_redis_errors(cache_service, redis_client):
+    redis_client.setex.side_effect = redis.TimeoutError()
 
-        await cache_service.set_rate(coin, value)
-        mock_redis_client.setex.assert_awaited_once_with(
-            f"rate:{coin.symbol}",
-            settings.REDIS_CACHE_EXPIRE,
-            str(value),
-        )
+    await cache_service.set_rate(ETH, 987.65)
 
-        mock_redis_client.setex.reset_mock()
+    assert cache_service.is_up is False
 
-    async def test_get_rate_redis_connection_error(
-        self, cache_service, mock_redis_client
-    ):
-        mock_redis_client.get.side_effect = redis.ConnectionError()
 
-        rate = await cache_service.get_rate(BTC)
-        assert rate is None
+async def test_is_up_recovers_after_successful_call(cache_service, redis_client):
+    redis_client.get.side_effect = [redis.ConnectionError(), "1.0"]
+
+    await cache_service.get_rate(BTC)
+    assert cache_service.is_up is False
+
+    await cache_service.get_rate(BTC)
+    assert cache_service.is_up is True

@@ -10,6 +10,6 @@ SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Yields one database session per request and closes it afterwards."""
+    """Yields one database session per request."""
     async with SessionLocal() as session:
         yield session

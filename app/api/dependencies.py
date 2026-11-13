@@ -25,8 +25,8 @@ def get_failover_service():
 
 
 @lru_cache
-def get_coingecko_service(failover: FailoverService = Depends(get_failover_service)):
-    return CoinGeckoService(failover=failover)
+def get_coingecko_service():
+    return CoinGeckoService()
 
 
 @lru_cache
@@ -57,6 +57,7 @@ async def get_exchange_rate(
     query: ExchangeQueryParams = Depends(validate_exchange_params),
     api: CoinGeckoService = Depends(get_coingecko_service),
     cache: CacheService = Depends(get_cache_service),
+    failover: FailoverService = Depends(get_failover_service),
 ) -> float:
     """Gets the exchange rate for the given coin.
 
@@ -71,14 +72,15 @@ async def get_exchange_rate(
         return rate
 
     if not cache.is_up:
-        if api.failover.should_block_request(query.coin):
+        if failover.should_block_request(query.coin):
             raise RateLimitException(
                 "Failover policy blocks the request.",
-                retry_after=api.failover.retry_after(query.coin),
+                retry_after=failover.retry_after(query.coin),
             )
 
         logger.warning("Cache is down, proceeding without cache.")
 
     rate = await api.get_rate(query.coin)
+    failover.record_call(query.coin)
     await cache.set_rate(query.coin, rate)
     return rate

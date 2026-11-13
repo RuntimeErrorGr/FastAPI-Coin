@@ -2,66 +2,51 @@ from unittest.mock import patch
 
 import pytest
 
+from app.config import settings
 from tests.coins import BTC, ETH
 
+TIMEOUT = settings.REDIS_CACHE_EXPIRE
+NOW = 1_000_000.0
 
-class TestFailoverService:
-    @pytest.mark.parametrize(
-        "recorded_coin, check_coin, time_passed, expected_block",
-        [
-            # No previous call
-            (None, BTC, 0, False),
-            # Same coin, only 5s passed (blocked)
-            (
-                BTC,
-                BTC,
-                5,
-                True,
-            ),
-            # Same coin, 70s passed (expired/not blocked)
-            (
-                BTC,
-                BTC,
-                70,
-                False,
-            ),
-            # Different coin (not blocked)
-            (BTC, ETH, 5, False),
-        ],
-    )
-    def test_should_block_request(
-        self, failover_service, recorded_coin, check_coin, time_passed, expected_block
-    ):
-        start_time = 1000
 
-        with patch("time.time") as mock_time:
-            mock_time.return_value = start_time
+@pytest.fixture
+def clock():
+    """Controls what time.time() returns inside the test."""
+    with patch("time.time") as clock:
+        yield clock
 
-            if recorded_coin:
-                failover_service.record_call(recorded_coin)
 
-            mock_time.return_value = start_time + time_passed
+def test_coin_never_fetched_is_not_blocked(failover):
+    assert failover.should_block_request(BTC) is False
+    assert failover.retry_after(BTC) == 0
 
-            result = failover_service.should_block_request(check_coin)
-            assert result == expected_block
 
-    @pytest.mark.parametrize(
-        "time_passed, expected",
-        [
-            (0, 60),
-            (5, 55),
-            (59.5, 1),
-            (60, 0),
-            (70, 0),
-        ],
-    )
-    def test_retry_after(self, failover_service, time_passed, expected):
-        with patch("time.time") as mock_time:
-            mock_time.return_value = 1000
-            failover_service.record_call(BTC)
+@pytest.mark.parametrize(
+    "elapsed, blocked",
+    [(0, True), (TIMEOUT - 1, True), (TIMEOUT, False), (TIMEOUT + 60, False)],
+)
+def test_coin_is_blocked_until_timeout_expires(failover, clock, elapsed, blocked):
+    clock.return_value = NOW
+    failover.record_call(BTC)
 
-            mock_time.return_value = 1000 + time_passed
-            assert failover_service.retry_after(BTC) == expected
+    clock.return_value = NOW + elapsed
+    assert failover.should_block_request(BTC) is blocked
 
-    def test_retry_after_unknown_coin(self, failover_service):
-        assert failover_service.retry_after(ETH) == 0
+
+@pytest.mark.parametrize(
+    "elapsed, expected",
+    [(0, TIMEOUT), (5, TIMEOUT - 5), (TIMEOUT - 0.5, 1), (TIMEOUT, 0), (TIMEOUT + 60, 0)],
+)
+def test_retry_after_counts_down_to_zero(failover, clock, elapsed, expected):
+    clock.return_value = NOW
+    failover.record_call(BTC)
+
+    clock.return_value = NOW + elapsed
+    assert failover.retry_after(BTC) == expected
+
+
+def test_other_coins_are_not_blocked(failover, clock):
+    clock.return_value = NOW
+    failover.record_call(BTC)
+
+    assert failover.should_block_request(ETH) is False

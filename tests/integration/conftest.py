@@ -2,52 +2,54 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
+from app.api.dependencies import (
+    get_cache_service,
+    get_coingecko_service,
+    get_failover_service,
+)
 from app.config import settings
-from app.db.session import get_db_session
+from app.db.session import SessionLocal, get_db_session
 from app.main import app
 
 
 @pytest.fixture(scope="session", autouse=True)
 def migrated_database():
-    """Builds the schema once per test run by applying every migration."""
-    alembic_config = Config("alembic.ini")
-    command.upgrade(alembic_config, "head")
+    """Applies every migration once before the integration tests, reverts them after."""
+    config = Config("alembic.ini")
+    command.upgrade(config, "head")
     yield
-    command.downgrade(alembic_config, "base")
+    command.downgrade(config, "base")
 
 
 @pytest.fixture
 async def db_session():
-    """A session whose changes are rolled back after each test.
+    """A session inside a transaction that is rolled back after each test.
 
-    The outer transaction is never committed; anything the code under test
-    commits only releases a SAVEPOINT inside it.
+    Each test runs on its own event loop and asyncpg connections are tied to
+    the loop that opened them, so every test opens its own connection.
     """
     engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
     async with engine.connect() as connection:
         transaction = await connection.begin()
-        session = AsyncSession(
-            bind=connection,
-            join_transaction_mode="create_savepoint",
-            expire_on_commit=False,
-        )
-        yield session
-        await session.close()
+        async with SessionLocal(bind=connection) as session:
+            yield session
         await transaction.rollback()
     await engine.dispose()
 
 
 @pytest.fixture
-def overrides(overrides, db_session):
-    return {**overrides, get_db_session: lambda: db_session}
-
-
-@pytest.fixture
-async def async_client(override_dependencies):
-    """HTTP client that runs the app in the test event loop."""
+async def client(db_session, cache, coingecko, failover):
+    """HTTP client that calls the app in-process, on the test's event loop."""
+    app.dependency_overrides = {
+        get_db_session: lambda: db_session,
+        get_cache_service: lambda: cache,
+        get_coingecko_service: lambda: coingecko,
+        get_failover_service: lambda: failover,
+    }
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+    app.dependency_overrides.clear()

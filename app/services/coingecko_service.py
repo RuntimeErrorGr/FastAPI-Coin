@@ -10,7 +10,6 @@ from app.config import settings
 from app.exceptions import ExternalAPIException
 from app.log import get_logger
 from app.schemas.coin import CoinRead
-from app.services.failover_service import FailoverService
 
 logger = get_logger(__name__)
 
@@ -28,12 +27,11 @@ def _is_retryable(exc: BaseException) -> bool:
 class CoinGeckoService:
     """Service to interact with the CoinGecko API."""
 
-    def __init__(self, failover: FailoverService):
+    def __init__(self):
         self.client = httpx.AsyncClient(
             base_url=settings.EXTERNAL_API_URL,
             timeout=settings.EXTERNAL_API_TIMEOUT,
         )
-        self.failover = failover
 
     @retry(
         stop=stop_after_attempt(2),
@@ -68,5 +66,4 @@ class CoinGeckoService:
                 "Failed to fetch data from CoinGecko API."
             ) from e
 
-        self.failover.record_call(coin)
         return rate

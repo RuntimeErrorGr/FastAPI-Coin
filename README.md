@@ -103,16 +103,14 @@ Coins are data, so adding one is a **data migration**:
 ## Extra
 
 ### Tests
-The project includes three layers of tests, all run inside Docker:
+The project has two layers of tests, both run inside Docker:
 
 ```bash
 make test-run
 ```
 
-* **Unit** (`tests/unit`): services and dependencies in isolation, with Redis, HTTP and the database mocked.
-* **API** (`tests/api`): HTTP requests through FastAPI, with every dependency replaced by a fake.
-* **Integration** (`tests/integration`): runs against a throwaway PostgreSQL container. It applies the real migrations,
-  then runs each test inside a transaction that is rolled back afterwards.
+* **Unit** (`tests/unit`)
+* **Integration** (`tests/integration`)
 
 ### Logging
 Each server replica has its own log file. For convenience, the log folder from the container is mounted to the host's `/log` folder so you can easily inspect logs while the app is running.
