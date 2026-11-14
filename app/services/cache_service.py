@@ -1,11 +1,15 @@
 import redis.asyncio as redis
+from pydantic import TypeAdapter
 
 from app.config import settings
-from app.exceptions import CacheConnectionException, CacheMissException
+from app.exceptions import CacheConnectionException
 from app.log import get_logger
 from app.schemas.coin import CoinRead
 
 logger = get_logger(__name__)
+
+COINS_KEY = "coins"
+COIN_LIST = TypeAdapter(list[CoinRead])
 
 
 def create_redis_client() -> redis.Redis:
@@ -22,7 +26,11 @@ def create_redis_client() -> redis.Redis:
 
 
 class CacheService:
-    """Service to interact with the Redis cache."""
+    """Service to interact with the Redis cache.
+
+    Redis errors never escape this class: a failed read is treated as a miss,
+    a failed write is logged and skipped, and `is_up` records what happened.
+    """
 
     def __init__(self, client: redis.Redis):
         self.client = client
@@ -33,6 +41,44 @@ class CacheService:
         """Keeps track of the latest connection status to Redis."""
         return self._is_up
 
+    async def get_rate(self, coin: CoinRead) -> float | None:
+        """Returns the cached exchange rate for the coin, or None."""
+        value = await self._get(f"rate:{coin.symbol}")
+        return float(value) if value is not None else None
+
+    async def set_rate(self, coin: CoinRead, rate: float) -> None:
+        """Caches the exchange rate for the coin."""
+        await self._set(f"rate:{coin.symbol}", str(rate), settings.REDIS_CACHE_EXPIRE)
+
+    async def get_coins(self) -> list[CoinRead] | None:
+        """Returns the cached list of supported coins, or None."""
+        value = await self._get(COINS_KEY)
+        return COIN_LIST.validate_json(value) if value is not None else None
+
+    async def set_coins(self, coins: list[CoinRead]) -> None:
+        """Caches the list of supported coins."""
+        value = COIN_LIST.dump_json(coins).decode()
+        await self._set(COINS_KEY, value, settings.REDIS_CACHE_EXPIRE)
+
+    async def _get(self, key: str) -> str | None:
+        try:
+            value = await self._exec(self.client.get, key)
+        except CacheConnectionException as e:
+            logger.error(f"Cache read failed for {key}: {e}")
+            return None
+
+        logger.debug(f"Cache {'hit' if value is not None else 'miss'} for {key}")
+        return value
+
+    async def _set(self, key: str, value: str, ttl: int) -> None:
+        try:
+            await self._exec(self.client.setex, key, ttl, value)
+        except CacheConnectionException as e:
+            logger.error(f"Cache write failed for {key}: {e}")
+            return
+
+        logger.debug(f"Cache updated for {key}")
+
     async def _exec(self, func, *args, **kwargs):
         try:
             result = await func(*args, **kwargs)
@@ -41,39 +87,3 @@ class CacheService:
         except redis.RedisError as e:
             self._is_up = False
             raise CacheConnectionException("Failed to connect to Redis cache.") from e
-
-    async def _get_rate(self, coin: CoinRead) -> float:
-        rate = await self._exec(self.client.get, f"rate:{coin.symbol}")
-        if rate is not None:
-            logger.debug(f"Cache hit for {coin.symbol}: {rate}")
-            return float(rate)
-
-        raise CacheMissException(f"Coin not found in the cache: {coin.symbol}")
-
-    async def _set_rate(self, coin: CoinRead, rate: float) -> None:
-        await self._exec(
-            self.client.setex,
-            f"rate:{coin.symbol}",
-            settings.REDIS_CACHE_EXPIRE,
-            str(rate),
-        )
-        logger.debug(f"Cache updated for {coin.symbol}: {rate}")
-
-    async def set_rate(self, coin: CoinRead, rate: float) -> None:
-        """Attempts to update the exchange rate in the cache."""
-        try:
-            await self._set_rate(coin, rate)
-        except CacheConnectionException as e:
-            logger.error(f"Error updating cache for coin: {coin.symbol}: {e}")
-
-    async def get_rate(self, coin: CoinRead) -> float | None:
-        """Attempts to get the exchange rate from the cache."""
-        try:
-            rate = await self._get_rate(coin)
-            return rate
-        except CacheMissException as e:
-            logger.debug(f"Cache miss: {e}")
-            return None
-        except CacheConnectionException as e:
-            logger.error(f"Cache connection error: {e}")
-            return None

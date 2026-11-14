@@ -9,23 +9,21 @@ from app.db.session import create_engine, create_session_factory
 from app.handlers import register_exception_handlers
 from app.services.cache_service import create_redis_client
 from app.services.coingecko_service import create_http_client
-from app.services.failover_service import FailoverService
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     """Creates the objects shared by all requests on startup, closes them on shutdown."""
-    engine = create_engine()
-    application.state.session_factory = create_session_factory(engine)
+    db_engine = create_engine()
+    application.state.session_factory = create_session_factory(db_engine)
     application.state.redis_client = create_redis_client()
     application.state.http_client = create_http_client()
-    application.state.failover = FailoverService()
 
     yield
 
     await application.state.http_client.aclose()
     await application.state.redis_client.aclose()
-    await engine.dispose()
+    await db_engine.dispose()
 
 
 app = FastAPI(

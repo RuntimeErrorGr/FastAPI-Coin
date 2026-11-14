@@ -9,7 +9,7 @@ from app.services.failover_service import FailoverService
 
 @pytest.fixture
 def failover():
-    """The real FailoverService: it only keeps timestamps in memory."""
+    """The FailoverService: it only keeps timestamps in memory."""
     return FailoverService()
 
 
@@ -19,6 +19,7 @@ def cache():
     mock = MagicMock(spec=CacheService)
     mock.is_up = True
     mock.get_rate.return_value = None
+    mock.get_coins.return_value = None
     return mock
 
 

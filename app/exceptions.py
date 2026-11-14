@@ -34,12 +34,6 @@ class CacheConnectionException(ExchangeBaseException):
     pass
 
 
-class CacheMissException(ExchangeBaseException):
-    """Exception raised if the requested data was not found in the cache."""
-
-    pass
-
-
 class RateLimitException(CacheConnectionException):
     """Exception raised if the cache is unreachable.
 

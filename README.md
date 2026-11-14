@@ -98,7 +98,6 @@ Coins are data, so adding one is a **data migration**:
     make db-upgrade
     ```
 
-`/exchange?coin=doge` works right away, with no code change and no restart.
 
 ## Extra
 
