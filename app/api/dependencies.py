@@ -1,20 +1,29 @@
 from functools import lru_cache
 
 from fastapi import Depends, Query, Request
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import get_db_session
 from app.exceptions import (
+    AuthenticationException,
     InvalidCoinException,
     OutOfBoundsAmountException,
     RateLimitException,
 )
 from app.log import get_logger
 from app.repositories.coin_repository import CoinRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.exchange import ExchangeQueryParams
+from app.schemas.user import UserRead
+from app.security import decode_access_token
 from app.services.cache_service import CacheService
 from app.services.coingecko_service import CoinGeckoService
 from app.services.failover_service import FailoverService
+from app.services.user_service import UserService
 
 logger = get_logger(__name__)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=False)
 
 
 @lru_cache
@@ -34,6 +43,37 @@ def get_coin_repository(
     request: Request, cache: CacheService = Depends(get_cache_service)
 ) -> CoinRepository:
     return CoinRepository(request.app.state.session_factory, cache)
+
+
+def get_user_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> UserRepository:
+    return UserRepository(session)
+
+
+def get_user_service(
+    users: UserRepository = Depends(get_user_repository),
+) -> UserService:
+    return UserService(users)
+
+
+async def get_current_user(
+    token: str | None = Depends(oauth2_scheme),
+    users: UserRepository = Depends(get_user_repository),
+) -> UserRead:
+    """Returns the user identified by the bearer token of the request.
+
+    Raises:
+        AuthenticationException: if the token is missing or invalid, or its user
+            no longer exists.
+    """
+    if token is None:
+        raise AuthenticationException("Not authenticated.")
+    username = decode_access_token(token)
+    user = await users.get_by_username(username)
+    if user is None:
+        raise AuthenticationException("Could not validate credentials.")
+    return UserRead.model_validate(user.model_dump())
 
 
 async def validate_exchange_params(

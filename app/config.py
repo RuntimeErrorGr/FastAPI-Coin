@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     EXTERNAL_API_URL: str = "https://api.coingecko.com/api/v3/simple/price"
     EXTERNAL_API_TIMEOUT: int = 5
 
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 30
+
     @property
     def DATABASE_URL(self) -> URL:
         """SQLAlchemy URL for the async Postgres driver, built from POSTGRES_*."""

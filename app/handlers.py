@@ -3,11 +3,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.exceptions import (
+    AuthenticationException,
     CacheConnectionException,
     ExternalAPIException,
     InvalidCoinException,
     OutOfBoundsAmountException,
     RateLimitException,
+    UserAlreadyExistsException,
 )
 from app.log import get_logger
 
@@ -68,6 +70,22 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
     )
 
 
+async def user_already_exists_exception_handler(
+    _: Request, exc: UserAlreadyExistsException
+):
+    logger.warning(f"Sign-up rejected: {exc}")
+    return JSONResponse(status_code=409, content={"error": exc.message})
+
+
+async def authentication_exception_handler(_: Request, exc: AuthenticationException):
+    logger.warning(f"Authentication failed: {exc}")
+    return JSONResponse(
+        status_code=401,
+        content={"error": exc.message},
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 def register_exception_handlers(app: FastAPI):
     app.add_exception_handler(InvalidCoinException, coin_exception_handler)
     app.add_exception_handler(
@@ -79,3 +97,7 @@ def register_exception_handlers(app: FastAPI):
     )
     app.add_exception_handler(RateLimitException, failover_blocked_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(AuthenticationException, authentication_exception_handler)
+    app.add_exception_handler(
+        UserAlreadyExistsException, user_already_exists_exception_handler
+    )

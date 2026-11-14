@@ -26,11 +26,7 @@ def create_redis_client() -> redis.Redis:
 
 
 class CacheService:
-    """Service to interact with the Redis cache.
-
-    Redis errors never escape this class: a failed read is treated as a miss,
-    a failed write is logged and skipped, and `is_up` records what happened.
-    """
+    """Service to interact with the Redis cache."""
 
     def __init__(self, client: redis.Redis):
         self.client = client
@@ -42,21 +38,17 @@ class CacheService:
         return self._is_up
 
     async def get_rate(self, coin: CoinRead) -> float | None:
-        """Returns the cached exchange rate for the coin, or None."""
         value = await self._get(f"rate:{coin.symbol}")
         return float(value) if value is not None else None
 
     async def set_rate(self, coin: CoinRead, rate: float) -> None:
-        """Caches the exchange rate for the coin."""
         await self._set(f"rate:{coin.symbol}", str(rate), settings.REDIS_CACHE_EXPIRE)
 
     async def get_coins(self) -> list[CoinRead] | None:
-        """Returns the cached list of supported coins, or None."""
         value = await self._get(COINS_KEY)
         return COIN_LIST.validate_json(value) if value is not None else None
 
     async def set_coins(self, coins: list[CoinRead]) -> None:
-        """Caches the list of supported coins."""
         value = COIN_LIST.dump_json(coins).decode()
         await self._set(COINS_KEY, value, settings.REDIS_CACHE_EXPIRE)
 

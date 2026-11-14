@@ -12,7 +12,11 @@ dependencies = [
     "tenacity",
     "sqlalchemy[asyncio]",
     "asyncpg",
-    "alembic"
+    "alembic",
+    "pwdlib[argon2]",
+    "email-validator",
+    "pyjwt",
+    "python-multipart"
 ]
 
 [project.optional-dependencies]

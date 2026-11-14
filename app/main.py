@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import exchange_router
+from app.api import auth_router, coins_router, exchange_router, users_router
 from app.config import settings
 from app.db.session import create_engine, create_session_factory
 from app.handlers import register_exception_handlers
@@ -38,6 +38,9 @@ async def root():
     return {"message": "Welcome to the Coin API!"}
 
 
-app.include_router(exchange_router.router, tags=["exchange"])
+app.include_router(exchange_router.router)
+app.include_router(coins_router.router)
+app.include_router(users_router.router)
+app.include_router(auth_router.router)
 
 register_exception_handlers(app)

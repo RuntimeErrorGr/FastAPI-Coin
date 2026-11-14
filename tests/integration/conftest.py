@@ -13,10 +13,11 @@ from app.api.dependencies import (
     get_failover_service,
 )
 from app.config import settings
-from app.db.session import create_session_factory
+from app.db.session import create_session_factory, get_db_session
 from app.main import app
 from app.repositories.coin_repository import CoinRepository
 from app.services.cache_service import CacheService, create_redis_client
+from tests.users import ALICE
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -38,9 +39,18 @@ async def session_factory():
     engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
     async with engine.connect() as connection:
         transaction = await connection.begin()
-        yield create_session_factory(connection)
+        factory = create_session_factory(connection)
+        factory.configure(join_transaction_mode="create_savepoint")
+        yield factory
         await transaction.rollback()
     await engine.dispose()
+
+
+@pytest.fixture
+async def db_session(session_factory):
+    """The request-scoped session the app uses for writes, inside the test transaction."""
+    async with session_factory() as session:
+        yield session
 
 
 @pytest.fixture
@@ -68,9 +78,10 @@ async def redis_down(cache):
 
 
 @pytest.fixture
-async def http_client(session_factory, cache, coingecko, failover):
+async def http_client(session_factory, db_session, cache, coingecko, failover):
     """HTTP client that calls the app in-process on the test's event loop."""
     app.dependency_overrides = {
+        get_db_session: lambda: db_session,
         get_coin_repository: lambda: CoinRepository(session_factory, cache),
         get_cache_service: lambda: cache,
         get_coingecko_service: lambda: coingecko,
@@ -80,3 +91,18 @@ async def http_client(session_factory, cache, coingecko, failover):
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def alice(http_client):
+    """Signs Alice up and returns her account as the API returned it."""
+    response = await http_client.post("/users", json=ALICE)
+    return response.json()
+
+
+@pytest.fixture
+async def alice_headers(http_client, alice):
+    """Logs Alice in and returns the Authorization header for her requests."""
+    form = {"username": ALICE["username"], "password": ALICE["password"]}
+    response = await http_client.post("/auth/token", data=form)
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}

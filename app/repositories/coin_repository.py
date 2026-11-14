@@ -20,7 +20,11 @@ class CoinRepository:
     async def get_by_symbol(self, symbol: str) -> CoinRead | None:
         """Returns the coin with the given symbol, or None if it is not supported."""
         coins = await self.get_all()
-        return next((coin for coin in coins if coin.symbol == symbol), None)
+
+        for coin in coins:
+            if coin.symbol == symbol:
+                return coin
+        return None
 
     async def get_all(self) -> list[CoinRead]:
         """Returns supported coins, from the cache when possible."""

@@ -28,6 +28,19 @@ class ExternalAPIException(ExchangeBaseException):
     pass
 
 
+class UserAlreadyExistsException(ExchangeBaseException):
+    """Exception raised when the username or email is already registered."""
+
+    def __init__(self):
+        super().__init__("Username or email already registered.")
+
+
+class AuthenticationException(ExchangeBaseException):
+    """Exception raised when a login or an access token is not valid."""
+
+    pass
+
+
 class CacheConnectionException(ExchangeBaseException):
     """Exception raised if the cache is unreachable."""
 

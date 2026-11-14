@@ -1,3 +1,6 @@
+from collections.abc import AsyncGenerator
+
+from fastapi import Request
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
     AsyncEngine,
@@ -19,3 +22,9 @@ def create_session_factory(
 ) -> async_sessionmaker[AsyncSession]:
     """Creates sessions with the settings shared by the app and the tests."""
     return async_sessionmaker(bind, expire_on_commit=False)
+
+
+async def get_db_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
+    """Yields one database session per request for routes that write data."""
+    async with request.app.state.session_factory() as session:
+        yield session
