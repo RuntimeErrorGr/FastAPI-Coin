@@ -15,21 +15,30 @@ async def test_get_by_symbol_returns_seeded_coin(repository, coin):
     assert await repository.get_by_symbol(coin.symbol) == coin
 
 
-async def test_get_by_symbol_returns_none_for_unknown_coin(repository):
+async def test_get_by_symbol_for_unknown_coin(repository):
     assert await repository.get_by_symbol("doge") is None
 
 
 async def test_coins_are_loaded_from_database_and_cached_on_miss(repository, cache):
+    assert await cache.get_coins() is None
+
     coins = await repository.get_all()
 
     assert set(coins) == set(COINS.values())
-    cache.set_coins.assert_awaited_once_with(coins)
+    assert await cache.get_coins() == coins
 
 
 async def test_coins_come_from_cache_without_querying_database(repository, cache):
     doge = CoinRead(symbol="doge", coingecko_id="dogecoin", name="Dogecoin")
-    cache.get_coins.return_value = [doge]
+    await cache.set_coins([doge])
 
     assert await repository.get_by_symbol("doge") == doge
     assert await repository.get_by_symbol("btc") is None
-    cache.set_coins.assert_not_awaited()
+
+
+async def test_coins_are_loaded_from_database_when_redis_is_down(
+    repository, redis_down
+):
+    coins = await repository.get_all()
+
+    assert set(coins) == set(COINS.values())

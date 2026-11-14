@@ -1,4 +1,5 @@
 import pytest
+import redis.asyncio as redis
 from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
@@ -15,6 +16,7 @@ from app.config import settings
 from app.db.session import create_session_factory
 from app.main import app
 from app.repositories.coin_repository import CoinRepository
+from app.services.cache_service import CacheService, create_redis_client
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -39,6 +41,30 @@ async def session_factory():
         yield create_session_factory(connection)
         await transaction.rollback()
     await engine.dispose()
+
+
+@pytest.fixture
+async def redis_client():
+    """A client for the test Redis instance."""
+    client = create_redis_client()
+    await client.flushdb()
+    yield client
+    await client.flushdb()
+    await client.aclose()
+
+
+@pytest.fixture
+def cache(redis_client):
+    return CacheService(redis_client)
+
+
+@pytest.fixture
+async def redis_down(cache):
+    """Makes Redis unreachable by pointing the cache at a port nothing listens on."""
+    unreachable_client = redis.Redis(host="localhost", port=1)
+    cache.client = unreachable_client
+    yield
+    await unreachable_client.aclose()
 
 
 @pytest.fixture

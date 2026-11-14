@@ -21,6 +21,16 @@ def cache_service(redis_client):
 
 
 @pytest.fixture
+def cache():
+    """Mock for CacheService that is up and empty."""
+    mock = MagicMock(spec=CacheService)
+    mock.is_up = True
+    mock.get_rate.return_value = None
+    mock.get_coins.return_value = None
+    return mock
+
+
+@pytest.fixture
 def http_client():
     return AsyncMock()
 

@@ -12,6 +12,16 @@ services:
       timeout: 5s
       retries: 15
 
+  redis:
+    image: redis:alpine
+    command: redis-server --save "" --requirepass ${REDIS_PASSWORD}
+    env_file: .env
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD --no-auth-warning ping | grep -q PONG"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
   tests:
     build:
       context: .
@@ -24,4 +34,6 @@ services:
       - ENV=test
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
