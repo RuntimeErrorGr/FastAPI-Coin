@@ -3,7 +3,15 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import auth_router, coins_router, exchange_router, users_router
+from app.api import (
+    auth_router,
+    coins_router,
+    exchange_router,
+    notifications_router,
+    transfers_router,
+    users_router,
+    wallets_router,
+)
 from app.config import settings
 from app.db.session import create_engine, create_session_factory
 from app.handlers import register_exception_handlers
@@ -42,5 +50,8 @@ app.include_router(exchange_router.router)
 app.include_router(coins_router.router)
 app.include_router(users_router.router)
 app.include_router(auth_router.router)
+app.include_router(wallets_router.router)
+app.include_router(transfers_router.router)
+app.include_router(notifications_router.router)
 
 register_exception_handlers(app)

@@ -5,10 +5,13 @@ from fastapi.responses import JSONResponse
 from app.exceptions import (
     AuthenticationException,
     CacheConnectionException,
+    ConflictException,
     ExternalAPIException,
     InvalidCoinException,
+    NotFoundException,
     OutOfBoundsAmountException,
     RateLimitException,
+    TransferRejectedException,
     UserAlreadyExistsException,
 )
 from app.log import get_logger
@@ -86,6 +89,23 @@ async def authentication_exception_handler(_: Request, exc: AuthenticationExcept
     )
 
 
+async def not_found_exception_handler(_: Request, exc: NotFoundException):
+    logger.warning(f"Not found: {exc}")
+    return JSONResponse(status_code=404, content={"error": exc.message})
+
+
+async def conflict_exception_handler(_: Request, exc: ConflictException):
+    logger.warning(f"Conflict: {exc}")
+    return JSONResponse(status_code=409, content={"error": exc.message})
+
+
+async def transfer_rejected_exception_handler(
+    _: Request, exc: TransferRejectedException
+):
+    logger.warning(f"Transfer rejected: {exc}")
+    return JSONResponse(status_code=400, content={"error": exc.message})
+
+
 def register_exception_handlers(app: FastAPI):
     app.add_exception_handler(InvalidCoinException, coin_exception_handler)
     app.add_exception_handler(
@@ -100,4 +120,9 @@ def register_exception_handlers(app: FastAPI):
     app.add_exception_handler(AuthenticationException, authentication_exception_handler)
     app.add_exception_handler(
         UserAlreadyExistsException, user_already_exists_exception_handler
+    )
+    app.add_exception_handler(NotFoundException, not_found_exception_handler)
+    app.add_exception_handler(ConflictException, conflict_exception_handler)
+    app.add_exception_handler(
+        TransferRejectedException, transfer_rejected_exception_handler
     )

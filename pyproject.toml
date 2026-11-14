@@ -16,7 +16,8 @@ dependencies = [
     "pwdlib[argon2]",
     "email-validator",
     "pyjwt",
-    "python-multipart"
+    "python-multipart",
+    "celery[redis]"
 ]
 
 [project.optional-dependencies]

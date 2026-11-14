@@ -13,14 +13,21 @@ from app.exceptions import (
 )
 from app.log import get_logger
 from app.repositories.coin_repository import CoinRepository
+from app.repositories.ledger_repository import LedgerRepository
+from app.repositories.notification_repository import NotificationRepository
+from app.repositories.outbox_repository import OutboxRepository
+from app.repositories.transfer_repository import TransferRepository
 from app.repositories.user_repository import UserRepository
+from app.repositories.wallet_repository import WalletRepository
 from app.schemas.exchange import ExchangeQueryParams
 from app.schemas.user import UserRead
 from app.security import decode_access_token
 from app.services.cache_service import CacheService
 from app.services.coingecko_service import CoinGeckoService
 from app.services.failover_service import FailoverService
+from app.services.transfer_service import TransferService
 from app.services.user_service import UserService
+from app.services.wallet_service import WalletService
 
 logger = get_logger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=False)
@@ -46,6 +53,12 @@ def get_coin_repository(
     return CoinRepository(session, cache)
 
 
+def get_notification_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> NotificationRepository:
+    return NotificationRepository(session)
+
+
 def get_user_repository(
     session: AsyncSession = Depends(get_db_session),
 ) -> UserRepository:
@@ -56,6 +69,29 @@ def get_user_service(
     users: UserRepository = Depends(get_user_repository),
 ) -> UserService:
     return UserService(users)
+
+
+def get_wallet_service(
+    session: AsyncSession = Depends(get_db_session),
+    coins: CoinRepository = Depends(get_coin_repository),
+) -> WalletService:
+    return WalletService(
+        session, WalletRepository(session), LedgerRepository(session), coins
+    )
+
+
+def get_transfer_service(
+    session: AsyncSession = Depends(get_db_session),
+    users: UserRepository = Depends(get_user_repository),
+) -> TransferService:
+    return TransferService(
+        session,
+        users,
+        WalletRepository(session),
+        TransferRepository(session),
+        LedgerRepository(session),
+        OutboxRepository(session),
+    )
 
 
 async def get_current_user(

@@ -1,4 +1,5 @@
 from enum import Enum
+from urllib.parse import quote
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
@@ -47,6 +48,25 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 30
+
+    CELERY_BROKER_DB: int = 1
+    OUTBOX_DISPATCH_INTERVAL: float = 5.0
+
+    SMTP_HOST: str = "mailpit"
+    SMTP_PORT: int = 1025
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_STARTTLS: bool = False
+    EMAIL_FROM: str = "Coin API <noreply@coinapi.local>"
+
+    @property
+    def CELERY_BROKER_URL(self) -> str:
+        """Redis URL for Celery, on its own Redis database so it stays apart from the cache."""
+        password = quote(self.REDIS_PASSWORD, safe="")
+        return (
+            f"redis://:{password}@{self.REDIS_HOST}:{self.REDIS_PORT}"
+            f"/{self.CELERY_BROKER_DB}"
+        )
 
     @property
     def DATABASE_URL(self) -> URL:

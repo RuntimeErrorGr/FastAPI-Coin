@@ -32,6 +32,11 @@ class UserRepository:
         await self._session.refresh(user)
         return UserRead.model_validate(user)
 
+    async def get_by_id(self, user_id: int) -> UserRead | None:
+        """Returns the user with the given id."""
+        user = await self._session.get(User, user_id)
+        return UserRead.model_validate(user) if user else None
+
     async def get_by_username(self, username: str) -> UserInDB | None:
         """Returns the user with the given username, including the password hash."""
         user = await self._session.scalar(select(User).where(User.username == username))

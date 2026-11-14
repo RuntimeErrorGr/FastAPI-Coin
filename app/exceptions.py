@@ -41,6 +41,24 @@ class AuthenticationException(ExchangeBaseException):
     pass
 
 
+class NotFoundException(ExchangeBaseException):
+    """Exception raised when a requested resource does not exist."""
+
+    pass
+
+
+class ConflictException(ExchangeBaseException):
+    """Exception raised when a request conflicts with existing data."""
+
+    pass
+
+
+class TransferRejectedException(ExchangeBaseException):
+    """Exception raised when a transfer breaks a business rule."""
+
+    pass
+
+
 class CacheConnectionException(ExchangeBaseException):
     """Exception raised if the cache is unreachable."""
 

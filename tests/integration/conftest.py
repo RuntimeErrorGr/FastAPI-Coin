@@ -15,7 +15,7 @@ from app.config import settings
 from app.db.session import create_session_factory, get_db_session
 from app.main import app
 from app.services.cache_service import CacheService, create_redis_client
-from tests.users import ALICE
+from tests.users import ALICE, BOB
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -110,3 +110,12 @@ def auth_client(http_client, alice_headers):
     """The HTTP client, logged in as Alice: every request carries her token."""
     http_client.headers.update(alice_headers)
     return http_client
+
+
+@pytest.fixture
+async def bob_headers(http_client):
+    """Signs Bob up, logs him in and returns the Authorization header for him."""
+    await http_client.post("/users", json=BOB)
+    form = {"username": BOB["username"], "password": BOB["password"]}
+    response = await http_client.post("/auth/token", data=form)
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}

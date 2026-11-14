@@ -98,6 +98,24 @@ Coins are data, so adding one is a **data migration**:
     make db-upgrade
     ```
 
+## Email notifications
+After a transfer, the `worker` container emails the sender and the recipient (see the outbox and Celery flow in the code:
+`app/services/outbox_dispatcher.py`, `app/worker/tasks.py`).
+
+In development, emails go to **Mailpit**, a local inbox that accepts mail for any address:
+```
+http://localhost:8025
+```
+
+To send to real inboxes, point the `SMTP_*` settings in `.env` at a provider. For example, Brevo's free plan:
+```
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_STARTTLS=true
+SMTP_USERNAME=<your Brevo SMTP login>
+SMTP_PASSWORD=<your Brevo SMTP key>
+EMAIL_FROM=Coin API <a-sender-you-verified-in-brevo@example.com>
+```
 
 ## Extra
 
