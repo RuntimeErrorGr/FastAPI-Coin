@@ -7,13 +7,16 @@ from app.api.dependencies import (
 )
 from app.schemas.exchange import ExchangeQueryParams, ExchangeQueryResponse
 
-router = APIRouter(prefix="/exchange", tags=["exchange"])
+router = APIRouter(
+    prefix="/exchange",
+    tags=["exchange"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.get("", response_model=ExchangeQueryResponse)
 async def get_exchange_info(
     query: ExchangeQueryParams = Depends(validate_exchange_params),
     rate: float = Depends(get_exchange_rate),
-    user: str = Depends(get_current_user),
 ):
     return {"usd_amount": round(rate * query.amount, 2)}

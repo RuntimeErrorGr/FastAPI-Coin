@@ -103,3 +103,10 @@ async def alice_headers(http_client, alice):
     form = {"username": ALICE["username"], "password": ALICE["password"]}
     response = await http_client.post("/auth/token", data=form)
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+@pytest.fixture
+def auth_client(http_client, alice_headers):
+    """The HTTP client, logged in as Alice: every request carries her token."""
+    http_client.headers.update(alice_headers)
+    return http_client
