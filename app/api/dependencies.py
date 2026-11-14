@@ -40,9 +40,10 @@ def get_cache_service(request: Request) -> CacheService:
 
 
 def get_coin_repository(
-    request: Request, cache: CacheService = Depends(get_cache_service)
+    session: AsyncSession = Depends(get_db_session),
+    cache: CacheService = Depends(get_cache_service),
 ) -> CoinRepository:
-    return CoinRepository(request.app.state.session_factory, cache)
+    return CoinRepository(session, cache)
 
 
 def get_user_repository(

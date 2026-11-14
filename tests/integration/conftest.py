@@ -8,14 +8,12 @@ from sqlalchemy.pool import NullPool
 
 from app.api.dependencies import (
     get_cache_service,
-    get_coin_repository,
     get_coingecko_service,
     get_failover_service,
 )
 from app.config import settings
 from app.db.session import create_session_factory, get_db_session
 from app.main import app
-from app.repositories.coin_repository import CoinRepository
 from app.services.cache_service import CacheService, create_redis_client
 from tests.users import ALICE
 
@@ -48,7 +46,7 @@ async def session_factory():
 
 @pytest.fixture
 async def db_session(session_factory):
-    """The request-scoped session the app uses for writes, inside the test transaction."""
+    """The request-scoped session the app uses, inside the test transaction."""
     async with session_factory() as session:
         yield session
 
@@ -78,11 +76,10 @@ async def redis_down(cache):
 
 
 @pytest.fixture
-async def http_client(session_factory, db_session, cache, coingecko, failover):
+async def http_client(db_session, cache, coingecko, failover):
     """HTTP client that calls the app in-process on the test's event loop."""
     app.dependency_overrides = {
         get_db_session: lambda: db_session,
-        get_coin_repository: lambda: CoinRepository(session_factory, cache),
         get_cache_service: lambda: cache,
         get_coingecko_service: lambda: coingecko,
         get_failover_service: lambda: failover,

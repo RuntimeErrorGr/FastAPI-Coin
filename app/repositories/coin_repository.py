@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Coin
 from app.schemas.coin import CoinRead
@@ -9,12 +9,8 @@ from app.services.cache_service import CacheService
 class CoinRepository:
     """Data access for supported coins."""
 
-    def __init__(
-        self,
-        session_factory: async_sessionmaker[AsyncSession],
-        cache: CacheService,
-    ):
-        self._session_factory = session_factory
+    def __init__(self, session: AsyncSession, cache: CacheService):
+        self._session = session
         self._cache = cache
 
     async def get_by_symbol(self, symbol: str) -> CoinRead | None:
@@ -37,6 +33,5 @@ class CoinRepository:
         return coins
 
     async def _query_all(self) -> list[CoinRead]:
-        async with self._session_factory() as session:
-            rows = await session.scalars(select(Coin).order_by(Coin.symbol))
-            return [CoinRead.model_validate(row) for row in rows]
+        rows = await self._session.scalars(select(Coin).order_by(Coin.symbol))
+        return [CoinRead.model_validate(row) for row in rows]

@@ -25,6 +25,6 @@ def create_session_factory(
 
 
 async def get_db_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
-    """Yields one database session per request for routes that write data."""
+    """Yields the one database session shared by everything in a request."""
     async with request.app.state.session_factory() as session:
         yield session
