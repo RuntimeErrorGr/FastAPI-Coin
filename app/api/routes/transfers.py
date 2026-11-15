@@ -21,7 +21,7 @@ async def create_transfer(
     user: UserRead = Depends(get_current_user),
     transfers: TransferService = Depends(get_transfer_service),
 ) -> TransferRead:
-    """Sends money from your wallet to another user's wallet of the same coin.
+    """Sends money from your wallet to another user wallet of the same coin.
 
     Returns 201 for a new transfer and 200 when a retry replays an earlier one.
     """

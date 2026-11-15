@@ -13,4 +13,8 @@ celery_app.conf.beat_schedule = {
         "task": "app.worker.tasks.dispatch_outbox",
         "schedule": settings.OUTBOX_DISPATCH_INTERVAL,
     },
+    "resend-unsent-emails": {
+        "task": "app.worker.tasks.retry_unsent_emails",
+        "schedule": settings.EMAIL_RESEND_INTERVAL,
+    },
 }

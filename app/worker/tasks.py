@@ -1,6 +1,7 @@
 import asyncio
 import smtplib
 from collections.abc import Awaitable, Callable
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -23,7 +24,7 @@ logger = get_logger(__name__)
 
 
 def publish(event: OutboxEventRead) -> None:
-    """Sends one event to the broker, as a `handle_event` task for a worker."""
+    """Sends one event to the broker, as a handle_event task for a worker."""
     handle_event.delay(event.id, event.event_type, event.payload)
 
 
@@ -47,14 +48,22 @@ async def _dispatch(session: AsyncSession) -> int:
     ).dispatch()
 
 
-async def _notify(session: AsyncSession, payload: dict[str, Any]) -> int:
-    service = NotificationService(
+def _notification_service(session: AsyncSession) -> NotificationService:
+    return NotificationService(
         session,
         UserRepository(session),
         NotificationRepository(session),
         create_email_sender(),
     )
-    return await service.notify_transfer_completed(payload)
+
+
+async def _notify(session: AsyncSession, payload: dict[str, Any]) -> int:
+    return await _notification_service(session).notify_transfer_completed(payload)
+
+
+async def _retry(session: AsyncSession) -> int:
+    older_than = timedelta(seconds=settings.EMAIL_RESEND_AFTER)
+    return await _notification_service(session).retry_unsent(older_than)
 
 
 @celery_app.task
@@ -80,3 +89,16 @@ def handle_event(event_id: int, event_type: str, payload: dict[str, Any]) -> Non
 
     sent = asyncio.run(_with_session(lambda session: _notify(session, payload)))
     logger.info(f"Event {event_id}: sent {sent} email(s)")
+
+
+@celery_app.task
+def retry_unsent_emails() -> int:
+    """Periodic task (Celery beat): sends emails that are still unsent.
+
+    It only picks notifications older than EMAIL_RESEND_AFTER, so it doesn't
+    race with `handle_event`, which is still retrying the recent ones.
+    """
+    sent = asyncio.run(_with_session(_retry))
+    if sent:
+        logger.info(f"Resent {sent} email(s)")
+    return sent

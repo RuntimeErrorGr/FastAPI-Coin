@@ -51,6 +51,8 @@ class Settings(BaseSettings):
 
     CELERY_BROKER_DB: int = 1
     OUTBOX_DISPATCH_INTERVAL: float = 5.0
+    EMAIL_RESEND_INTERVAL: float = 60.0
+    EMAIL_RESEND_AFTER: int = 300
 
     SMTP_HOST: str = "mailpit"
     SMTP_PORT: int = 1025

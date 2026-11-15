@@ -1,4 +1,5 @@
 import asyncio
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.log import get_logger
 from app.repositories.notification_repository import NotificationRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.notification import NotificationPending
 from app.services.email_sender import EmailSender
 
 logger = get_logger(__name__)
@@ -53,12 +55,22 @@ class NotificationService:
         )
         await self._session.commit()
 
-        pending = await self._notifications.list_unsent(transfer_id)
+        return await self._send(await self._notifications.list_unsent(transfer_id))
+
+    async def retry_unsent(self, older_than: timedelta) -> int:
+        """Sends the emails still unsent after `older_than` and returns how many.
+
+        They are the ones whose event gave up retrying.
+        """
+        return await self._send(
+            await self._notifications.list_unsent_older_than(older_than)
+        )
+
+    async def _send(self, pending: list[NotificationPending]) -> int:
+        """Emails each notification and commits it as sent, one by one."""
         for email in pending:
-            await asyncio.to_thread(
-                self._email.send, email.email, SUBJECT, email.message
-            )
+            await asyncio.to_thread(self._email.send, email.to, SUBJECT, email.message)
             await self._notifications.mark_sent(email.notification_id)
             await self._session.commit()
-            logger.info(f"Emailed {email.email}: {email.message}")
+            logger.info(f"Emailed {email.to}: {email.message}")
         return len(pending)

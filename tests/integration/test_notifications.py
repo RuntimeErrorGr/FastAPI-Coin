@@ -1,7 +1,8 @@
+from datetime import timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 
 from app.models import Notification, OutboxEvent
 from app.repositories.notification_repository import NotificationRepository
@@ -84,6 +85,38 @@ async def test_unsent_emails_are_sent_when_retried(db_session, transfer_event):
 
     assert sent == 2
     assert len(email.sent) == 2
+
+
+async def make_unsent(db_session, transfer_event, age: timedelta) -> None:
+    """Saves the notifications without sending them, created `age` ago."""
+    with pytest.raises(ConnectionError):
+        await service(db_session, FakeEmailSender(fail=True)).notify_transfer_completed(
+            transfer_event
+        )
+    await db_session.execute(update(Notification).values(created_at=func.now() - age))
+
+
+async def test_old_unsent_emails_are_resent(db_session, transfer_event):
+    await make_unsent(db_session, transfer_event, age=timedelta(hours=1))
+    email = FakeEmailSender()
+
+    sent = await service(db_session, email).retry_unsent(timedelta(minutes=5))
+
+    assert sent == 2
+    assert len(email.sent) == 2
+    assert await service(db_session, email).retry_unsent(timedelta(minutes=5)) == 0
+
+
+async def test_recent_unsent_emails_are_left_to_the_event_retries(
+    db_session, transfer_event
+):
+    await make_unsent(db_session, transfer_event, age=timedelta(minutes=1))
+    email = FakeEmailSender()
+
+    sent = await service(db_session, email).retry_unsent(timedelta(minutes=5))
+
+    assert sent == 0
+    assert email.sent == []
 
 
 async def test_users_see_their_notifications(

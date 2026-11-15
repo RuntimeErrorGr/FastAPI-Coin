@@ -3,7 +3,12 @@ from unittest.mock import AsyncMock, patch
 from app.config import settings
 from app.schemas.outbox import OutboxEventRead
 from app.worker.celery_app import celery_app
-from app.worker.tasks import dispatch_outbox, handle_event, publish
+from app.worker.tasks import (
+    dispatch_outbox,
+    handle_event,
+    publish,
+    retry_unsent_emails,
+)
 
 
 def test_dispatcher_runs_on_a_schedule():
@@ -11,6 +16,20 @@ def test_dispatcher_runs_on_a_schedule():
 
     assert schedule["task"] == dispatch_outbox.name
     assert schedule["schedule"] == settings.OUTBOX_DISPATCH_INTERVAL
+
+
+def test_unsent_emails_are_resent_on_a_schedule():
+    schedule = celery_app.conf.beat_schedule["resend-unsent-emails"]
+
+    assert schedule["task"] == retry_unsent_emails.name
+    assert schedule["schedule"] == settings.EMAIL_RESEND_INTERVAL
+
+
+def test_resend_task_returns_how_many_were_sent():
+    with patch("app.worker.tasks._with_session", new_callable=AsyncMock) as session:
+        session.return_value = 3
+
+        assert retry_unsent_emails() == 3
 
 
 def test_publish_sends_the_event_as_a_task():

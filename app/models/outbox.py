@@ -18,8 +18,8 @@ class EventType(StrEnum):
 class OutboxEvent(Base):
     """An event saved in the same transaction as the change it describes.
 
-    A background dispatcher publishes it later. `published_at` is empty
-    until then, so pending events are the ones with no `published_at`.
+    A background dispatcher publishes it later.
+    published_at is empty until then, so pending events are the ones with no published_at.
     """
 
     __tablename__ = "outbox_events"

@@ -101,6 +101,8 @@ Coins are data, so adding one is a **data migration**:
 ## Email notifications
 After a transfer, the `worker` container emails the sender and the recipient (see the outbox and Celery flow in the code:
 `app/services/outbox_dispatcher.py`, `app/worker/tasks.py`).
+If the mail server is down, the task retries a few times. A periodic task then resends any email
+that is still unsent after `EMAIL_RESEND_AFTER` seconds (5 minutes by default).
 
 In development, emails go to **Mailpit**, a local inbox that accepts mail for any address:
 ```

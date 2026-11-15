@@ -23,7 +23,7 @@ class OutboxDispatcher:
         self._publish = publish
 
     async def dispatch(self, limit: int = 100) -> int:
-        """Publishes up to `limit` pending events and returns how many were sent.
+        """Publishes pending events in Redis and returns how many were sent.
 
         Events are marked as published only after all of them were sent. If
         publishing fails, nothing is marked and the next run tries again, so

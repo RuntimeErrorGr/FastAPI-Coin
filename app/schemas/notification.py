@@ -15,11 +15,11 @@ class NotificationRead(BaseModel):
     sent_at: datetime | None
 
 
-class PendingEmail(BaseModel):
+class NotificationPending(BaseModel):
     """A notification whose email has not been sent yet."""
 
     model_config = ConfigDict(from_attributes=True)
 
     notification_id: int
-    email: str
+    to: str
     message: str

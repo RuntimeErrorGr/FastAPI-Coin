@@ -24,7 +24,6 @@ class EmailSender:
         self._starttls = starttls
 
     def send(self, to: str, subject: str, body: str) -> None:
-        """Sends one email. Raises an `OSError` or `SMTPException` if it fails."""
         message = EmailMessage()
         message["From"] = self._sender
         message["To"] = to

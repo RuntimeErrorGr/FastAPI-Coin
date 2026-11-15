@@ -46,7 +46,7 @@ class TransferService:
     async def transfer(
         self, sender: UserRead, data: TransferCreate, idempotency_key: str
     ) -> TransferResult:
-        """Sends money in one database transaction: all of it happens, or none.
+        """Sends money in one database transaction: all of it happens or none.
 
         A retry with the same idempotency key returns the original transfer
         instead of sending the money again.

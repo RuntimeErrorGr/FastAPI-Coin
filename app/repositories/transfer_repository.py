@@ -68,7 +68,7 @@ class TransferRepository:
     async def get_by_idempotency_key(
         self, sender_wallet_id: int, idempotency_key: str
     ) -> TransferRead | None:
-        """Returns the transfer the sender made with this key, if any."""
+        """Returns the transfer the sender made with this key if any."""
         row = (
             await self._session.execute(
                 _transfers_with_names().where(
@@ -89,7 +89,7 @@ class TransferRepository:
         return TransferRead.model_validate(row)
 
     async def list_for_user(self, user_id: int) -> list[TransferRead]:
-        """Returns the transfers the user sent or received, newest first."""
+        """Returns the transfers the user sent or received"""
         rows = await self._session.execute(
             _transfers_with_names()
             .where(or_(Sender.id == user_id, Receiver.id == user_id))
