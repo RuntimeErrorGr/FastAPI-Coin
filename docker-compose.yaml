@@ -67,6 +67,7 @@ services:
     command:
       - "--app=app.worker.celery_app"
       - "worker"
+      - "--task-events"
       - "--loglevel=info"
     env_file: .env
     volumes:
@@ -79,6 +80,29 @@ services:
         condition: service_started
       migrate:
         condition: service_completed_successfully
+
+  flower:
+    image: mher/flower:2.0.1
+    command:
+      - "celery"
+      - "--broker=redis://:${REDIS_PASSWORD}@redis:6379/${CELERY_BROKER_DB:-1}"
+      - "flower"
+      - "--port=5555"
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_started
+
+  portainer:
+    image: portainer/portainer-ce:2.27.3
+    command:
+      - "--admin-password=$$2y$$05$$Qrgu047Md1T1L2qakc1bN..yH1L6L/NZuKiVDEg5llLbg3NyNUN8a"
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
 
   mailpit:
     image: axllent/mailpit:v1.27
@@ -111,3 +135,4 @@ services:
 volumes:
   redis_data:
   pg_data:
+  portainer_data:

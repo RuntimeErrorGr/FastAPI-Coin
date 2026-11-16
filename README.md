@@ -119,6 +119,15 @@ SMTP_PASSWORD=<your Brevo SMTP key>
 EMAIL_FROM=Coin API <a-sender-you-verified-in-brevo@example.com>
 ```
 
+## Monitoring
+| Dashboard | URL | What it shows |
+|---|---|---|
+| **Flower** | http://localhost:5555 | Celery workers and every task: arguments, result, retries, failures |
+| **Portainer** | http://localhost:9000 (`admin` / `portainer1234`) | Running containers, their logs, CPU and memory; restart or stop them |
+| **Mailpit** | http://localhost:8025 | Sent emails |
+
+Portainer reads the Docker socket, which gives it full control over Docker. It is meant for local development only.
+
 ## Extra
 
 ### Tests
