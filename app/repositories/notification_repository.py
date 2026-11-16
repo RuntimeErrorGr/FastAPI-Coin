@@ -70,6 +70,5 @@ def _unsent() -> Select:
         )
         .join(User, Notification.user_id == User.id)
         .where(Notification.sent_at.is_(None))
-        .with_for_update(skip_locked=True)
         .order_by(Notification.id)
     )
