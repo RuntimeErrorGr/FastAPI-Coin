@@ -42,15 +42,31 @@ services:
       postgres:
         condition: service_healthy
 
-  worker:
+  beat:
     build: *app-build
     image: coinapi/api
     entrypoint: ["celery"]
     command:
       - "--app=app.worker.celery_app"
-      - "worker"
-      - "--beat"
+      - "beat"
       - "--schedule=/tmp/celerybeat-schedule"
+      - "--loglevel=info"
+    env_file: .env
+    volumes:
+      - ./app:/app/app
+    depends_on:
+      redis:
+        condition: service_started
+
+  worker:
+    build: *app-build
+    image: coinapi/api
+    deploy:
+      replicas: 1
+    entrypoint: ["celery"]
+    command:
+      - "--app=app.worker.celery_app"
+      - "worker"
       - "--loglevel=info"
     env_file: .env
     volumes:
@@ -88,7 +104,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 2s
       timeout: 5s
-      retries: 15
+      retries: 10
     expose:
       - "5432"
 

@@ -80,8 +80,7 @@ def dispatch_outbox() -> int:
 def handle_event(event_id: int, event_type: str, payload: dict[str, Any]) -> None:
     """Consumes one published event.
 
-    If sending an email fails, Celery runs the task again later (up to 5
-    times, waiting longer each time). Only the unsent emails are retried.
+    If sending an email fails, Celery runs the task again later.
     """
     if event_type != EventType.TRANSFER_COMPLETED:
         logger.warning(f"Ignoring event {event_id}: unknown type {event_type}")
