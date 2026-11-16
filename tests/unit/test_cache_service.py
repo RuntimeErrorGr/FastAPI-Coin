@@ -59,6 +59,7 @@ async def test_get_coins_returns_cached_list(cache_service, redis_client):
     redis_client.get.return_value = (
         '[{"symbol": "btc", "coingecko_id": "bitcoin", "name": "Bitcoin"},'
         ' {"symbol": "eth", "coingecko_id": "ethereum", "name": "Ethereum"},'
+        ' {"symbol": "usd", "coingecko_id": "usd", "name": "US Dollar"},'
         ' {"symbol": "xrp", "coingecko_id": "ripple", "name": "XRP"}]'
     )
 

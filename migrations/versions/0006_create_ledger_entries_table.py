@@ -16,6 +16,12 @@ down_revision: str | None = "0005"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+DEMO_DEPOSIT = 100
+JOHN_USD = """
+    SELECT wallets.id FROM wallets JOIN users ON users.id = wallets.user_id
+    WHERE users.username = 'john' AND wallets.coin_symbol = 'usd'
+"""
+
 
 def upgrade() -> None:
     op.create_table(
@@ -50,8 +56,20 @@ def upgrade() -> None:
         ["wallet_id"],
         unique=False,
     )
+    op.execute(
+        sa.text(f"""
+            UPDATE wallets SET balance = balance + {DEMO_DEPOSIT} WHERE id = ({JOHN_USD})
+            """)
+    )
+    op.execute(
+        sa.text(f"""
+            INSERT INTO ledger_entries (wallet_id, entry_type, amount)
+            SELECT ({JOHN_USD}), 'credit', {DEMO_DEPOSIT}
+            """)
+    )
 
 
 def downgrade() -> None:
+    op.execute(sa.text(f"UPDATE wallets SET balance = 0 WHERE id = ({JOHN_USD})"))
     op.drop_index(op.f("ix_ledger_entries_wallet_id"), table_name="ledger_entries")
     op.drop_table("ledger_entries")

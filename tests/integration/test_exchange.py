@@ -14,6 +14,13 @@ async def test_converts_amount(auth_client, coingecko):
     coingecko.get_rate.assert_awaited_once_with(BTC)
 
 
+async def test_usd_converts_one_to_one_without_calling_the_api(auth_client, coingecko):
+    response = await auth_client.get("/exchange", params={"coin": "usd", "amount": 2})
+
+    assert response.json() == {"usd_amount": 2.0}
+    coingecko.get_rate.assert_not_awaited()
+
+
 async def test_second_request_is_served_from_redis(auth_client, coingecko, cache):
     coingecko.get_rate.return_value = 20000.0
     params = {"coin": "btc", "amount": 1}

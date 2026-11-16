@@ -52,6 +52,13 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_wallets")),
         sa.UniqueConstraint("user_id", "coin_symbol", name=op.f("uq_wallets_user_id")),
     )
+    op.execute(
+        sa.text("""
+            INSERT INTO wallets (user_id, coin_symbol)
+            SELECT users.id, coins.symbol FROM users CROSS JOIN coins
+            WHERE users.username IN ('john', 'jane') AND coins.symbol IN ('usd', 'btc')
+            """)
+    )
 
 
 def downgrade() -> None:

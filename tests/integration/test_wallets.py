@@ -60,7 +60,11 @@ async def test_deposit_records_one_credit_entry(auth_client, db_session):
 
     await auth_client.post("/wallets/btc/deposit", json={"amount": "2"})
 
-    entries = (await db_session.scalars(select(LedgerEntry))).all()
+    entries = (
+        await db_session.scalars(
+            select(LedgerEntry).where(LedgerEntry.wallet_id == wallet["id"])
+        )
+    ).all()
     assert [(e.wallet_id, e.entry_type, e.amount) for e in entries] == [
         (wallet["id"], EntryType.CREDIT, 2)
     ]

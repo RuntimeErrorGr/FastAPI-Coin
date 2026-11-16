@@ -31,8 +31,8 @@ async def test_login_rejects_bad_credentials(http_client, alice, form):
     assert response.headers["WWW-Authenticate"] == "Bearer"
 
 
-async def test_seeded_admin_can_log_in(http_client):
-    form = {"username": "admin", "password": "admin1234"}
+async def test_seeded_demo_user_can_log_in(http_client):
+    form = {"username": "john", "password": "demo1234"}
 
     response = await http_client.post("/auth/token", data=form)
 

@@ -25,6 +25,7 @@ INITIAL_COINS = [
     {"symbol": "btc", "coingecko_id": "bitcoin", "name": "Bitcoin"},
     {"symbol": "eth", "coingecko_id": "ethereum", "name": "Ethereum"},
     {"symbol": "xrp", "coingecko_id": "ripple", "name": "XRP"},
+    {"symbol": "usd", "coingecko_id": "usd", "name": "US Dollar"},
 ]
 
 
