@@ -82,11 +82,10 @@ def get_wallet_service(
 
 def get_transfer_service(
     session: AsyncSession = Depends(get_db_session),
-    users: UserRepository = Depends(get_user_repository),
 ) -> TransferService:
     return TransferService(
         session,
-        users,
+        UserRepository(session),
         WalletRepository(session),
         TransferRepository(session),
         LedgerRepository(session),
