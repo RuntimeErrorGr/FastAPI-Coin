@@ -95,7 +95,6 @@ class TransferService:
         )
 
     async def _get_recipient(self, sender: UserRead, username: str) -> UserRead:
-        """Returns the recipient, who must exist and be someone else."""
         if username == sender.username:
             raise TransferRejectedException("You cannot transfer to yourself.")
 
@@ -107,7 +106,6 @@ class TransferService:
     async def _lock_wallets(
         self, sender: UserRead, recipient: UserRead, coin: str
     ) -> tuple[WalletRead, WalletRead]:
-        """Locks both users' wallets of the coin and returns (sender's, recipient's)."""
         wallets = await self._wallets.get_many_for_update(
             [sender.id, recipient.id], coin
         )
@@ -150,7 +148,6 @@ class TransferService:
         amount: Decimal,
         idempotency_key: str,
     ) -> tuple[int, datetime]:
-        """Saves the transfer, both balances and the two ledger entries."""
         transfer_id, created_at = await self._transfers.add(
             sender_wallet_id, recipient_wallet_id, amount, idempotency_key
         )
@@ -172,7 +169,6 @@ class TransferService:
         coin: str,
         amount: Decimal,
     ) -> None:
-        """Adds the transfer.completed event to the outbox, in this transaction."""
         await self._outbox.add(
             EventType.TRANSFER_COMPLETED,
             {
