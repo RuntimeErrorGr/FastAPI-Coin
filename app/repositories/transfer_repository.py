@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import Select, or_, select
@@ -45,8 +46,8 @@ class TransferRepository:
         receiver_wallet_id: int,
         amount: Decimal,
         idempotency_key: str,
-    ) -> int:
-        """Adds a transfer to the current transaction and returns its id.
+    ) -> tuple[int, datetime]:
+        """Adds a transfer to the current transaction and returns its id and creation time.
 
         Raises:
             ConflictException: if the sender already used this idempotency key.
@@ -63,7 +64,7 @@ class TransferRepository:
         except IntegrityError as e:
             await self._session.rollback()
             raise ConflictException("Idempotency key already used.") from e
-        return transfer.id
+        return transfer.id, transfer.created_at
 
     async def get_by_idempotency_key(
         self, sender_wallet_id: int, idempotency_key: str
@@ -78,15 +79,6 @@ class TransferRepository:
             )
         ).one_or_none()
         return TransferRead.model_validate(row) if row else None
-
-    async def get(self, transfer_id: int) -> TransferRead:
-        """Returns one transfer."""
-        row = (
-            await self._session.execute(
-                _transfers_with_names().where(Transfer.id == transfer_id)
-            )
-        ).one()
-        return TransferRead.model_validate(row)
 
     async def list_for_user(self, user_id: int) -> list[TransferRead]:
         """Returns the transfers the user sent or received"""
